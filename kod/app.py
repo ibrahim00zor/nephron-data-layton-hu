@@ -10,8 +10,9 @@ Run with:  streamlit run kod/app.py
 import streamlit as st
 
 import nav
+import nephron_figure
 import style
-from ui_kit import APP_NAME, apply_frame, render_sidebar
+from ui_kit import APP_NAME, apply_frame, colophon, render_sidebar
 
 # Menu: pages grouped into the two worlds (model / clinical) plus data & quality.
 page_objects = {
@@ -30,10 +31,11 @@ nav.set_current_page(current)
 
 st.set_page_config(
     page_title=f"{nav.title(current)} · {APP_NAME}",
-    page_icon="◐",
+    page_icon=nephron_figure.mark(background=style.PAPER),
     layout="wide",
     initial_sidebar_state="expanded",
 )
+st.logo(nephron_figure.mark(), size="large")
 apply_frame()
 render_sidebar()
 nav.render_origin()
@@ -43,3 +45,4 @@ if nav.PAGES[current]["section"]:
 selected.run()
 
 nav.render_explore_bar()
+colophon()

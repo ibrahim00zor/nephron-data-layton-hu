@@ -12,11 +12,10 @@ active_scenario = nav.get("scenario")
 
 st.markdown("## Interactive Anatomy (BETA)")
 st.caption(
-    "D3.js-based anatomic nephron drawing. "
-    "Segment color shows the selected solute's concentration (switchable to solute **load / flux** "
-    "with the button on top), segment thickness shows tubular water flow (volume), "
-    "and the background gradient reflects the prescribed interstitial osmolality. "
-    "The flow animation conveys water flow via particle speed; click a segment to pin its profile to the chart."
+    "The nephron drawn, and coloured with the data. The colour of a segment is the concentration of "
+    "the chosen solute (the button on the drawing switches it to solute load), its thickness is "
+    "the water flowing through it, and the background is the interstitial osmolality the model is "
+    "given. Click a segment to keep its profile in the chart."
 )
 
 # --- Top selectors (bound to the shared selection) ---

@@ -174,6 +174,13 @@ hr {{ border: 0; border-top: 1px solid {RULE}; margin: 1.5rem 0 1.3rem; }}
   font-family: {MONO}; font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: {MUTED}; font-weight: 400;
 }}
 [data-testid="stSidebar"] hr {{ margin: 1rem 0 0.9rem; }}
+/* the wordmark: the mark from st.logo, and the name set beside it in the page's own serif
+   (on the Home page the logo sits in a div, elsewhere in a link back to Home) */
+[data-testid="stSidebarHeader"] > :first-child {{ display: flex; align-items: center; gap: 0.5rem; }}
+[data-testid="stSidebarHeader"] > :first-child::after {{
+  content: "Nephron Data"; font-family: {SERIF}; font-weight: 600; font-size: 1.14rem;
+  letter-spacing: -0.012em; color: {INK}; white-space: nowrap;
+}}
 [data-testid="stPageLink-NavLink"] {{ padding-left: 0; }}
 [data-testid="stPageLink-NavLink"]:hover {{ background: transparent; }}
 [data-testid="stPageLink-NavLink"] p {{ color: {ACCENT}; text-decoration: underline; text-underline-offset: 3px; }}
@@ -237,10 +244,17 @@ dl.nd-issues dt .nd-label.done {{ color: {GOOD}; }}
 dl.nd-issues dd {{ margin: 0.2rem 0 0.9rem 5.2rem; color: {INK_SOFT}; font-size: 0.95rem; line-height: 1.55; }}
 dl.nd-issues code {{ font-size: 0.82rem; }}
 
+figure.nd-plate {{ margin: 1.5rem 0 0; border-top: 1px solid {INK_SOFT}; padding-top: 0.5rem; }}
+figure.nd-plate figcaption {{ font-size: 0.84rem; line-height: 1.5; color: {MUTED}; margin-top: 0.5rem; }}
+figure.nd-plate figcaption b {{ color: {INK_SOFT}; font-weight: 600; }}
+
 .nd-colophon {{
-  border-top: 1px solid {INK_SOFT}; padding-top: 0.7rem; margin-top: 0.4rem;
+  border-top: 1px solid {INK_SOFT}; padding-top: 0.7rem; margin-top: 2.2rem;
   font-size: 0.84rem; color: {MUTED}; line-height: 1.6;
 }}
+.nd-colophon b {{ color: {INK_SOFT}; font-weight: 600; }}
+.nd-colophon a {{ color: {MUTED}; }}
+.nd-where {{ display: flex; gap: 0.9rem; align-items: center; }}
 .nd-side-title {{ font-size: 1.12rem; font-weight: 600; line-height: 1.2; margin-bottom: 0.1rem; }}
 .nd-side-meta {{ font-family: {MONO}; font-size: 0.72rem; color: {MUTED}; line-height: 1.6; }}
 .nd-side-about {{ font-size: 0.9rem; color: {INK_SOFT}; font-style: italic; line-height: 1.45; margin: -0.3rem 0 0.2rem; }}

@@ -6,6 +6,7 @@ app.py (the router) and every file under views/ import this module. The page fra
 from here. Page files hold only their own logic — boilerplate lives here.
 Navigation and the shared selection context live in nav.py.
 """
+import html
 import os
 import duckdb
 import pandas as pd
@@ -13,6 +14,7 @@ import streamlit as st
 import plotly.express as px
 
 import nav
+import nephron_figure
 import style
 from clinical_cases import CASES, CASE_BY_SCENARIO
 from style import SCENARIO_COLOR  # noqa: F401  (re-exported: pages import it from here)
@@ -144,12 +146,6 @@ def segment_broken(scenario, segment):
 def render_sidebar():
     scenarios = scenario_list()
     with st.sidebar:
-        st.markdown(
-            "<div class='nd-side-title'>Nephron Data</div>"
-            "<div class='nd-side-meta'>after the Layton/Hu model of the human nephron</div>",
-            unsafe_allow_html=True,
-        )
-
         scenario = nav.select(
             st, "Active scenario", scenarios, "scenario", fallback="F_normal",
             format_func=lambda s: SCENARIO_LABEL.get(s, s),
@@ -178,9 +174,12 @@ def render_sidebar():
         # The selection that travels with the user across pages
         st.markdown("---")
         st.markdown(
-            f"<div class='nd-label'>Selection, kept across pages</div>"
+            f"<div class='nd-where'>{nephron_figure.locator(nav.get('segment'))}"
+            f"<div><div class='nd-label'>Selection, kept across pages</div>"
             f"<div class='nd-side-meta' style='font-size:0.8rem;color:{style.INK_SOFT};'>"
-            f"{nav.selection_summary()}</div>",
+            f"{nav.selection_summary()}</div>"
+            f"<div class='nd-side-meta'>marked: where {html.escape(str(nav.get('segment')))} lies</div>"
+            f"</div></div>",
             unsafe_allow_html=True,
         )
         if not nav.is_default_selection():
@@ -240,6 +239,23 @@ def make_chart(df, x, y, color, title, xlab, ylab, color_label="Series",
                                       y=-0.2, yanchor="top"))
     fig.update_traces(line=dict(width=2))
     return fig
+
+# ============================================================
+#  Colophon (the last thing on every page)
+# ============================================================
+def colophon():
+    st.markdown(
+        "<div class='nd-colophon'>"
+        "<b>Nephron Data (Layton/Hu)</b> · İbrahim Zor, 2026 · "
+        "<a href='https://doi.org/10.5281/zenodo.20489610' target='_blank'>doi:10.5281/zenodo.20489610</a> · "
+        "<a href='https://github.com/ibrahim00zor/nefron-veri-gezgini' target='_blank'>source</a><br>"
+        "Model: Hu R., McDonough A.A., Layton A.T. (2021). <i>Sex differences in solute and water "
+        "handling in the human kidney.</i> iScience 24(6):102667.<br>"
+        "Code under the MIT licence, content under CC BY 4.0. "
+        "Set in Source Serif and IBM Plex Mono; built with Streamlit, DuckDB and Plotly."
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
 # ============================================================
 #  Citation footer (under every chart)

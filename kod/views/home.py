@@ -3,28 +3,43 @@ import streamlit as st
 import plotly.express as px
 
 import nav
+import nephron_figure
 import style
-from ui_kit import q, DB
+from ui_kit import q, DB, SCENARIO_LABEL, segment_broken
 
 # ============================================================
-#  Masthead
+#  Masthead, with the plate: the nephron of the active scenario
 # ============================================================
-st.markdown(
-    "<h1>Nephron Data <span class='nd-title-sub'>(Layton/Hu)</span></h1>"
-    "<p class='nd-lede'>A mathematical model of the human nephron, laid out so it can be read: "
-    "what happens to water and to each solute, segment by segment, in six scenarios.</p>"
-    "<div class='nd-byline'>İbrahim Zor · 2026 · "
-    "<a href='https://doi.org/10.5281/zenodo.20489610' target='_blank'>doi:10.5281/zenodo.20489610</a> · "
-    "<a href='https://github.com/ibrahim00zor/nefron-veri-gezgini' target='_blank'>source on GitHub</a></div>",
-    unsafe_allow_html=True,
-)
-st.markdown("---")
+scenario = nav.get("scenario")
 
-# ============================================================
-#  What it is
-# ============================================================
-left, right = st.columns([3, 2], gap="large")
-with left:
+
+def _plate_values(scenario):
+    """Lumen osmolality at the inlet and outlet of each segment: the superficial nephron,
+    then the collecting duct. Segments that did not converge are left out."""
+    df = q(
+        f"""SELECT segment, arg_min(value, position) AS inlet, arg_max(value, position) AS outlet
+            FROM {DB}
+            WHERE condition=? AND variable='osmolality' AND compartment='Lumen'
+                  AND nephron IN ('sup', 'merged')
+            GROUP BY segment""",
+        [scenario],
+    )
+    return {row.segment: (row.inlet, row.outlet) for row in df.itertuples()
+            if not segment_broken(scenario, row.segment)}
+
+
+text, figure = st.columns(2, gap="large")
+with text:
+    st.markdown(
+        "<h1>Nephron Data <span class='nd-title-sub'>(Layton/Hu)</span></h1>"
+        "<p class='nd-lede'>A mathematical model of the human nephron, laid out so it can be read: "
+        "what happens to water and to each solute, segment by segment, in six scenarios.</p>"
+        "<div class='nd-byline'>İbrahim Zor · 2026 · "
+        "<a href='https://doi.org/10.5281/zenodo.20489610' target='_blank'>doi:10.5281/zenodo.20489610</a> · "
+        "<a href='https://github.com/ibrahim00zor/nefron-veri-gezgini' target='_blank'>source on GitHub</a></div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("---")
     st.markdown(
         "The numbers come from the epithelial transport model of the Layton group "
         "(Hu, McDonough & Layton 2021, *iScience*), run for a healthy woman and a healthy man, "
@@ -33,9 +48,8 @@ with left:
         "the concentration of a solute along a segment, how much of a change is mass and how much "
         "is water, how the scenarios differ, and what each transporter carries."
     )
-with right:
     st.markdown(
-        "<div class='nd-label'>In the dataset</div>"
+        "<div class='nd-label' style='margin-top:0.6rem;'>In the dataset</div>"
         "<div style='font-size:0.95rem;line-height:1.7;margin-top:0.2rem;'>"
         "6 scenarios · 12 segments · 15 solutes<br>"
         "superficial and five juxtamedullary nephrons<br>"
@@ -43,6 +57,22 @@ with right:
         "17 transporters, with their fluxes</div>",
         unsafe_allow_html=True,
     )
+
+with figure:
+    values = _plate_values(scenario)
+    missing = [code for code in nephron_figure.ORDER if code not in values]
+    st.markdown(
+        "<figure class='nd-plate'>" + nephron_figure.plate(values) +
+        "<figcaption><b>Fig. 1.</b> The superficial nephron of the model and the collecting duct it "
+        "drains into. The tint and the numbers are the osmolality of the tubular fluid (mOsm) where "
+        f"it leaves each segment, in <i>{SCENARIO_LABEL.get(scenario, scenario)}</i>; change the "
+        "scenario in the left panel and the figure follows. "
+        + (f"{', '.join(missing)} did not converge in this scenario (n.c.). " if missing else "")
+        + "Schematic, not to scale; the model has no vasculature, so none is drawn.</figcaption></figure>",
+        unsafe_allow_html=True,
+    )
+    if st.button("Open the interactive drawing →", key="home_plate", width="stretch"):
+        nav.go("anatomy", back_label="Fig. 1 on the Home page")
 
 # ============================================================
 #  Three places to start — each opens the matching page with its selection applied
@@ -63,10 +93,23 @@ def _panel_head(letter, what, how):
 def _panel_chart(df, color, color_map=None, category_orders=None):
     fig = px.line(df, x="position", y="value", color=color, height=190,
                   color_discrete_map=color_map, category_orders=category_orders or {})
-    fig.update_layout(margin=dict(l=8, r=8, t=4, b=8),
-                      legend=dict(orientation="h", y=-0.28, x=0.5, xanchor="center", title_text=""),
+    fig.update_layout(margin=dict(l=8, r=48, t=4, b=8), showlegend=False,
                       xaxis_title=None, yaxis_title=None)
     fig.update_traces(line=dict(width=1.8))
+
+    # Each line is named where it ends, instead of in a legend. Names that would collide
+    # are moved apart (top to bottom, at least 13 px between them).
+    low, high = df["value"].min(), df["value"].max()
+    px_per_unit = 150 / ((high - low) or 1)
+    previous = None
+    for trace in sorted(fig.data, key=lambda t: t.y[-1], reverse=True):
+        at = (trace.y[-1] - low) * px_per_unit
+        if previous is not None and previous - at < 13:
+            at = previous - 13
+        previous = at
+        fig.add_annotation(x=trace.x[-1], y=trace.y[-1], text=trace.name, showarrow=False,
+                           xanchor="left", xshift=5, yshift=at - (trace.y[-1] - low) * px_per_unit,
+                           font=dict(size=12.5, color=trace.line.color))
     return fig
 
 
@@ -178,17 +221,3 @@ with c2:
         "are, the inner-medullary collecting duct did not converge either; those segments are hidden "
         "rather than drawn. This is a numerical limit of the model.",
         unsafe_allow_html=True)
-
-# ============================================================
-#  Colophon
-# ============================================================
-st.markdown(
-    "<div class='nd-colophon'>"
-    "Model: Hu R., McDonough A.A., Layton A.T. (2021). <i>Sex differences in solute and water handling "
-    "in the human kidney.</i> iScience 24(6):102667. "
-    "This tool: Zor İ. (2026). <i>Nephron Data (Layton/Hu).</i> Zenodo, doi:10.5281/zenodo.20489610.<br>"
-    "Code under the MIT licence, content under CC BY 4.0. "
-    "Set in Source Serif and IBM Plex Mono; built with Streamlit, DuckDB and Plotly."
-    "</div>",
-    unsafe_allow_html=True,
-)

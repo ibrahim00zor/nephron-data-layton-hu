@@ -66,6 +66,26 @@ Requires `streamlit>=1.52`. The dataset (`veri/nephron_veritabani.parquet`) is u
 - Segment lists are in physiological order (PT → IMCD) instead of alphabetical.
 - The anatomy diagram uses `st.iframe` (the previous component API is scheduled for removal).
 
+### Design
+
+- **A look of its own.** The default dashboard theme is replaced by the look of a printed
+  monograph: paper and ink, a serif for reading (Source Serif 4), a monospace for numbers
+  (IBM Plex Mono), one accent colour, rules instead of boxes, charts drawn like journal
+  figures. Palette, chart template and stylesheet live in `kod/style.py`; widget colours and
+  fonts in `.streamlit/config.toml`.
+- **Fig. 1 on the Home page.** A schematic of the superficial nephron and the collecting
+  duct, drawn as SVG from one geometry (`kod/nephron_figure.py`). Each segment is tinted and
+  labelled with the osmolality of the tubular fluid at its outlet, read from the dataset for
+  the active scenario; a segment that did not converge is hatched and labelled "n.c.".
+- **A locator in the sidebar.** The same drawing, small, marks the segment in the current
+  selection on every page.
+- **Mark and wordmark.** A logo (glomerulus and loop) in the sidebar and as the favicon.
+- The Home panels name each line where it ends instead of using a legend; Validation is a
+  ruled ledger; Data Integrity lists its notes as definitions; every page ends in a colophon.
+- The Streamlit "Deploy" button and developer menu are hidden (`toolbarMode = "minimal"`).
+
+No data, query or scientific statement is changed by the design work.
+
 ### Fixed
 
 - Opening a page by its URL bypassed the router when the page folder was named `pages/`
