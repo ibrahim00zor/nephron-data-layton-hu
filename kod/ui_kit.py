@@ -239,6 +239,8 @@ def render_sidebar():
                 "**This project:** Zor, İ. (2026). *Nephron Data (Layton/Hu).* Zenodo. "
                 "[doi:10.5281/zenodo.20489610](https://doi.org/10.5281/zenodo.20489610)"
             )
+            if "provenance" in nav.PAGES:
+                nav.link(st, "provenance", "Model & provenance: scenarios, inputs, how to reproduce")
         with st.expander("Units"):
             st.markdown(
                 "Concentration: **mM** · Solute flow: **pmol/min** · Volume: **nl/min** · "

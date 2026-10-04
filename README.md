@@ -35,6 +35,7 @@ automatically, and provides an educational clinical layer.
 | Clinical | Clinical Cases | Educational case interface built on the same scenarios — *not medical advice* |
 | Data & quality | Validation | Automatic physiology checks |
 | Data & quality | Data Integrity | Database inventory, convergence status, known limits |
+| Data & quality | Model & Provenance | The exact model command behind each scenario, the model's prescribed inputs, how to reproduce the dataset |
 
 **Linked exploration.** The selection (scenario, solute, segment, nephron type, compartment)
 travels with you from page to page, so one question can be followed across views. A clinical
@@ -83,7 +84,9 @@ that model's output; it does not re-implement the model.
   https://doi.org/10.1371/journal.pcbi.1006108
 - **Diabetic human model:** Hu, R., Layton, A. (2021). *A Computational Model of Kidney Function
   in a Patient with Diabetes.* Int J Mol Sci 22(11):5819. https://doi.org/10.3390/ijms22115819
-- **Model code:** [`mstadt/nephron`](https://github.com/mstadt/nephron)
+- **Model code:** [`mstadt/nephron`](https://github.com/mstadt/nephron), commit `761ab729092e` (2022-07-05).
+  The command line behind each scenario is in `kod/run_scenarios.py` and on the app's
+  *Model & Provenance* page.
 
 **Units:** concentration mM · solute flow pmol/min · volume nl/min · osmolality mOsm · potential mV ·
 transporter flux density pmol/(min·cm²) (1 model unit = 600; verified by mass balance, see

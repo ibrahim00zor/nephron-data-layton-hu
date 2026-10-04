@@ -37,6 +37,7 @@ PAGES = {
     "clinical":   {"path": "views/clinical.py",        "title": "Clinical Cases",             "section": CLINICAL},
     "validation": {"path": "views/validation.py",      "title": "Validation",                 "section": QUALITY},
     "integrity":  {"path": "views/data_integrity.py",  "title": "Data Integrity",             "section": QUALITY},
+    "provenance": {"path": "views/provenance.py",      "title": "Model & Provenance",         "section": QUALITY},
 }
 
 

@@ -157,7 +157,8 @@ st.markdown(f"""
      **Transporters** (membrane fluxes per pathway and transporter) ·
      **Interactive Anatomy** (the nephron as a diagram).
    - **{nav.CLINICAL}** — **Clinical Cases**: educational cases built on the same scenarios.
-   - **{nav.QUALITY}** — **Validation** (automatic physiology checks) and **Data Integrity** (inventory, known limits).
+   - **{nav.QUALITY}** — **Validation** (automatic physiology checks), **Data Integrity** (inventory, known limits)
+     and **Model & Provenance** (the exact model commands, what the model is given, how to reproduce the data).
 3. **Your selection travels with you.** The scenario, solute, segment and nephron type you choose
    on one page are what the next page opens with, so you can follow one question across views.
    A clinical case opens its scenarios in the model pages, and a scenario links back to its case.

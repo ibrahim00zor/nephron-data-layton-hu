@@ -52,6 +52,24 @@ SCENARIOS = [
                       "female_hum_normal"),
 ]
 
+# The baseline was generated first, with the same script and no extra flags.
+BASELINE = ("F_normal", ["--sex","female","--species","human","--type","multiple"], "female_hum_normal")
+
+# Model code the scenarios were generated with (recorded for reproducibility).
+MODEL_REPO = "https://github.com/mstadt/nephron"
+MODEL_COMMIT = "761ab729092e1fefcd82cb84ba0b2a56e04be951"   # 2022-07-05
+
+
+def all_scenarios():
+    """Every scenario that was run, baseline first: (label, model flags, model output folder)."""
+    return [BASELINE] + SCENARIOS
+
+
+def command(args):
+    """The model command line for a set of flags."""
+    return "python3 parallel_simulate.py " + " ".join(args)
+
+
 MODEL_DIR = os.path.expanduser("~/nephron")
 PROJECT_DIR = os.path.expanduser("~/Desktop/Nefron-Projesi")
 SCENARIOS_DIR = os.path.join(PROJECT_DIR, "veri", "ham_scenarios")
