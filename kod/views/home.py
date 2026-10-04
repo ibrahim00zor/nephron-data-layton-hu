@@ -124,7 +124,7 @@ def _panel_chart(df, color, color_map=None, category_orders=None, right=48):
                   color_discrete_map=color_map, category_orders=category_orders or {})
     fig.update_layout(margin=dict(l=8, r=right, t=4, b=8), showlegend=False,
                       xaxis_title=None, yaxis_title=None)
-    fig.update_traces(line=dict(width=1.8))
+    fig.update_traces(line=dict(width=1.8), hovertemplate="%{y:.4g}")
 
     # Each line is named where it ends, instead of in a legend. Names that would collide
     # are moved apart (top to bottom, at least 13 px between them).

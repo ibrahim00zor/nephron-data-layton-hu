@@ -45,7 +45,7 @@ def plot_case_metric(df, x_col, y_col, color_col, title, y_title, colors):
                   labels={x_col: "Position along the segment (0 = inlet, 1 = outlet)", y_col: y_title,
                           color_col: ""})
     fig.update_layout(hovermode="x unified", height=350, legend=dict(title_text=""))
-    fig.update_traces(line=dict(width=2))
+    fig.update_traces(line=dict(width=2), hovertemplate="%{y:.4g}")
     return fig
 
 

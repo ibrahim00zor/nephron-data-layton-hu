@@ -189,7 +189,7 @@ def row(name, shown, target, ok, how=None, scored=True):
         return (name, shown, target, "n/a", "quiet", how)
     if not scored:          # inputs are reported, not judged as model performance
         return (name, shown, target, "as specified" if ok else "check", "quiet", how)
-    return (name, shown, target, "✓ pass" if ok else "✗ differs", "pass" if ok else "fail", how)
+    return (name, shown, target, "pass" if ok else "differs", "pass" if ok else "fail", how)
 
 
 st.markdown("### Model outputs")

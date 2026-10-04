@@ -342,7 +342,9 @@ def make_chart(df, x, y, color, title, xlab, ylab, color_label="Series",
     if legend_below:   # long series names: give the plot the full width
         fig.update_layout(legend=dict(orientation="h", title_text="", x=0, xanchor="left",
                                       y=-0.2, yanchor="top"))
-    fig.update_traces(line=dict(width=2))
+    # under the pointer: the position once, then one short line per series
+    fig.update_traces(line=dict(width=2), hovertemplate="%{y:.4g}")
+    fig.update_xaxes(hoverformat=".3g")
     return fig
 
 # ============================================================

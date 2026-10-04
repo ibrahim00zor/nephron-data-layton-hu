@@ -73,7 +73,7 @@ fig = px.line(
 )
 fig.update_layout(hovermode="x unified", height=500,
                   legend=dict(title_text="SCENARIO"))
-fig.update_traces(line=dict(width=2))
+fig.update_traces(line=dict(width=2), hovertemplate="%{y:.4g}")
 st.plotly_chart(fig, width='stretch')
 cite_footer()
 

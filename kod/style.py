@@ -81,8 +81,12 @@ REFERENCE_SERIES = "#4a463e"   # the baseline in a "case vs normal" chart
 # - the paper has a tooth (a grain so slight it is felt more than seen);
 # - what is DRAWN (the nephron) is drawn by hand: the line wanders a little and is found in
 #   two passes, and tone is hatched (see nephron_figure.py);
-# - what is MEASURED (the line of a chart, a rule) is drawn along a ruler: its position is
-#   exact, only its texture is that of graphite. Data is never displaced.
+# - what is MEASURED (the line of a chart) is drawn along a ruler and left exactly as it is.
+#
+# Every pencil mark on the page (a rule, an underline, a frame, a tick) is a small SVG drawn
+# here, with its unevenness in the path itself, and used as a CSS background. Nothing depends
+# on the browser applying a filter to the page: in Safari a CSS `filter: url(#...)` on the
+# lines of a chart made them disappear (2026-10), so the page uses none.
 def _svg_url(svg):
     return 'url("data:image/svg+xml,' + quote(svg, safe="/:=,;'() ") + '")'
 
@@ -103,44 +107,83 @@ _MOTTLE = _svg_url(
 PAPER_TEXTURE = f"{_GRAIN}, {_MOTTLE}"
 
 
-_TOOTH = ("<filter id='t' x='0' y='0' width='100%' height='100%'>"
-          "<feTurbulence type='fractalNoise' baseFrequency='0.5 0.9' numOctaves='2' seed='5'/>"
-          "<feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.5 1.55'/>"
-          "<feComposite in='SourceGraphic' operator='in'/></filter>")
+def _tooth(width, height):
+    """The grain of graphite for a drawing `width` by `height` (in its own units). The region
+    is given outright: a region relative to a nearly flat line would cut the line away."""
+    return (f"<filter id='t' filterUnits='userSpaceOnUse' x='0' y='0' width='{width}' height='{height}'>"
+            "<feTurbulence type='fractalNoise' baseFrequency='0.5 0.9' numOctaves='2' seed='5'/>"
+            "<feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.5 1.6'/>"
+            "<feComposite in='SourceGraphic' operator='in'/></filter>")
+
+
+def _drawn(width, height, strokes, stretch=True, size=None):
+    """A pencil mark as a CSS image. strokes: (path, colour, weight, opacity). With `stretch`
+    it follows the shape of the box it is put in; with `size` it has a size of its own."""
+    fit = " preserveAspectRatio='none'" if stretch else ""
+    own = f" width='{size[0]}' height='{size[1]}'" if size else ""
+    body = "".join(f"<path d='{d}' stroke='{colour}' stroke-width='{weight}' opacity='{opacity}'/>"
+                   for d, colour, weight, opacity in strokes)
+    return _svg_url(
+        f"<svg xmlns='http://www.w3.org/2000/svg'{own} viewBox='0 0 {width} {height}'{fit}>"
+        f"{_tooth(width, height)}<g filter='url(#t)' fill='none' stroke-linecap='round' "
+        f"stroke-linejoin='round'>{body}</g></svg>")
 
 
 def _rule(colour, weight, upright=False):
-    """A line ruled in pencil: straight, but with the grain and the uneven pressure of graphite.
-    Lying down by default; `upright` for a line that runs down the page."""
+    """A line ruled in pencil: straight, with the uneven pressure of graphite. Lying down by
+    default; `upright` for a line that runs down the page."""
     if upright:
-        box = "0 0 6 1200"
-        first = "M3.1,3 C2.7,210 3.5,430 3,650 S2.8,1010 3.2,1197"
-        second = "M3.5,60 C3.1,330 3.4,720 2.9,1140"
-    else:
-        box = "0 0 1200 6"
-        first = "M3,3.1 C210,2.7 430,3.5 650,3 S1010,2.8 1197,3.2"
-        second = "M60,3.5 C330,3.1 720,3.4 1140,2.9"
-    return _svg_url(
-        f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='{box}' preserveAspectRatio='none'>{_TOOTH}"
-        f"<g filter='url(#t)' fill='none' stroke='{colour}' stroke-linecap='round'>"
-        f"<path d='{first}' stroke-width='{weight}'/>"
-        f"<path d='{second}' stroke-width='{weight * 0.55:.2f}' opacity='0.45'/>"
-        "</g></svg>")
+        return _drawn(6, 1200, [("M3.1,3 C2.7,210 3.5,430 3,650 S2.8,1010 3.2,1197", colour, weight, 1),
+                                ("M3.5,60 C3.1,330 3.4,720 2.9,1140", colour, round(weight * 0.55, 2), 0.45)])
+    return _drawn(1200, 6, [("M3,3.1 C210,2.7 430,3.5 650,3 S1010,2.8 1197,3.2", colour, weight, 1),
+                            ("M60,3.5 C330,3.1 720,3.4 1140,2.9", colour, round(weight * 0.55, 2), 0.45)])
 
 
-RULE_STRONG = _rule(GRAPHITE, 1.25)
-RULE_LIGHT = _rule("#8d8573", 1.0)
+RULE_STRONG = _rule(GRAPHITE, 1.3)
+RULE_LIGHT = _rule("#7d7566", 1.05)
 RULE_ACCENT = _rule(ACCENT, 1.5)
 UPRIGHT_STRONG = _rule(GRAPHITE, 1.3, upright=True)
-UPRIGHT_LIGHT = _rule("#8d8573", 1.0, upright=True)
+UPRIGHT_LIGHT = _rule("#7d7566", 1.05, upright=True)
 UPRIGHT_ACCENT = _rule(ACCENT, 1.6, upright=True)
 
-# the quick line drawn under a title
-UNDERLINE = _svg_url(
-    f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'>{_TOOTH}"
-    f"<g filter='url(#t)' fill='none' stroke='{ACCENT}' stroke-linecap='round'>"
-    "<path d='M2,5.4 C30,3.7 72,6.5 118,4.3' stroke-width='1.7'/>"
-    "<path d='M9,7.5 C42,6.3 80,8 110,6.7' stroke-width='0.9' opacity='0.5'/></g></svg>")
+
+def _underline(colour, weight=1.7):
+    """The quick line drawn under a title: one stroke, and a shorter, lighter one after it."""
+    return _drawn(120, 10, [("M2,5.4 C30,3.7 72,6.5 118,4.3", colour, weight, 1),
+                            ("M9,7.5 C42,6.3 80,8 110,6.7", colour, round(weight * 0.55, 2), 0.5)])
+
+
+UNDERLINE = _underline(ACCENT)                 # under the title of a page
+UNDERLINE_SOFT = _underline(GRAPHITE, 1.3)     # under the heading of a section, under the name
+# under a link: a single stroke that follows the words
+LINK_LINE = _drawn(200, 6, [("M1,3.5 C42,2.3 118,4.5 199,2.9", ACCENT, 1.25, 0.9)])
+LINK_LINE_QUIET = _drawn(200, 6, [("M1,3.5 C42,2.3 118,4.5 199,2.9", MUTED, 1.1, 0.8)])
+# a ring drawn round a letter; a tick and a cross in a list of checks; the dash before an item
+RING = _drawn(24, 24, [("M12.6,3.1 C6.4,2.5 2.5,7.4 3.2,12.7 C3.9,18.7 9.1,21.7 14.3,20.6 "
+                        "C19.5,19.5 21.9,14.7 20.8,9.9 C19.9,5.7 15.7,2.9 10.4,4", GRAPHITE, 1.2, 0.9)])
+TICK = _drawn(18, 16, [("M2.4,8.8 C4.4,10.4 6,12.4 7.1,14.2 C9.6,9 13.1,4.4 16.4,1.8", GOOD, 1.9, 1)])
+CROSS = _drawn(16, 16, [("M3,3.4 C6.6,6.8 9.8,10 13.4,13.2", ACCENT, 1.8, 1),
+                        ("M13,2.8 C9.8,6.4 6.6,9.6 2.8,13.4", ACCENT, 1.8, 1)])
+DASH = _drawn(20, 8, [("M2,4.6 C7,3.4 13,5 18,3.6", GRAPHITE, 1.7, 0.85)])
+
+
+def _frame(colour, weight=2.3):
+    """A box drawn by hand, for `border-image`: four ruled lines that overshoot where they
+    meet, and a lighter second pass on two of them. It has a size of its own (60 x 30 px)
+    so that the corners (7 px) stay what they are and only the sides stretch."""
+    return _drawn(120, 60, [
+        ("M2,4.6 C30,3.2 80,5.4 118,3.8", colour, weight, 1),
+        ("M116.2,1.5 C117.4,20 115.4,40 116.6,58.5", colour, weight, 1),
+        ("M118.5,56 C85,57.4 35,54.9 1.5,56.6", colour, weight, 1),
+        ("M3.8,58.8 C2.6,40 4.8,20 3.6,1.2", colour, weight, 1),
+        ("M7,7 C40,5.6 78,7.4 113,6", colour, round(weight * 0.5, 2), 0.4),
+        ("M6.2,54 C5.4,38 7,22 6,8", colour, round(weight * 0.5, 2), 0.4),
+    ], stretch=False, size=(60, 30))
+
+
+FRAME = _frame(GRAPHITE)
+FRAME_QUIET = _frame("#7d7566", 2.0)
+FRAME_ACCENT = _frame(ACCENT, 2.6)
 
 
 def _hatch(step, opacity):
@@ -153,28 +196,6 @@ def _hatch(step, opacity):
 
 HATCH = _hatch(7, 0.26)
 HATCH_DENSE = _hatch(5, 0.4)
-
-# Filters the page's own SVG (the charts) can refer to. Written once, with the stylesheet.
-DEFS = (
-    "<svg xmlns='http://www.w3.org/2000/svg' aria-hidden='true' "
-    "style='position:absolute;width:0;height:0;overflow:hidden'><defs>"
-    # graphite: erodes a line with the tooth of the paper; it does not move it
-    "<filter id='nd-graphite' filterUnits='userSpaceOnUse' x='-80' y='-80' width='2600' height='1700' "
-    "color-interpolation-filters='sRGB'>"
-    "<feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='7' result='grain'/>"
-    "<feColorMatrix in='grain' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.25 1.5' result='tooth'/>"
-    "<feComposite in='SourceGraphic' in2='tooth' operator='in'/></filter>"
-    # the hand: for a frame drawn around a button or a box (never around text or data)
-    "<filter id='nd-hand' x='-4%' y='-25%' width='108%' height='150%'>"
-    "<feTurbulence type='fractalNoise' baseFrequency='0.028' numOctaves='2' seed='3' result='hand'/>"
-    "<feDisplacementMap in='SourceGraphic' in2='hand' scale='2.6' xChannelSelector='R' yChannelSelector='G'/>"
-    "</filter>"
-    "<filter id='nd-hand-2' x='-4%' y='-25%' width='108%' height='150%'>"
-    "<feTurbulence type='fractalNoise' baseFrequency='0.035' numOctaves='2' seed='17' result='hand'/>"
-    "<feDisplacementMap in='SourceGraphic' in2='hand' scale='4' xChannelSelector='G' yChannelSelector='R'/>"
-    "</filter>"
-    "</defs></svg>"
-)
 
 # A small figure is read, not operated: no toolbar over it, no zooming by accident.
 QUIET_CHART = {"displayModeBar": False, "scrollZoom": False, "doubleClick": False}
@@ -439,7 +460,7 @@ body.nd-keys-on .nd-keys {{ display: block; }}
 .nd-side-meta {{ font-family: {MONO}; font-size: 0.72rem; color: {MUTED}; line-height: 1.6; }}
 .nd-side-about {{ font-size: 0.9rem; color: {INK_SOFT}; font-style: italic; line-height: 1.45; margin: -0.3rem 0 0.2rem; }}
 
-/* ---------- paper and pencil (see the note above DEFS) ---------- */
+/* ---------- paper and pencil (see the note at PAPER_TEXTURE) ---------- */
 [data-testid="stMain"] {{ background-image: {PAPER_TEXTURE}; background-attachment: local; }}
 [data-testid="stSidebarContent"] {{ background-image: {PAPER_TEXTURE}; background-attachment: local; }}
 [data-testid="stHeader"] {{ background-image: {PAPER_TEXTURE}; }}
@@ -470,21 +491,60 @@ dl.nd-issues dt {{ padding-top: 0.85rem; }}
 .nd-card .hint {{ font-size: 0.8rem; }}
 dl.nd-issues dt .nd-label {{ min-width: 5.2rem; }}
 
-/* a page title is underlined, quickly, in red pencil */
+/* a title is underlined, quickly: in red pencil under a page, in graphite under a section */
+[data-testid="stMain"] h1 {{
+  background: {UNDERLINE} left bottom 0.25rem / 7.4rem 10px no-repeat; padding-bottom: 1.2rem;
+}}
 [data-testid="stMain"] h2 {{
   background: {UNDERLINE} left bottom 0.35rem / 4.6rem 9px no-repeat; padding-bottom: 1.05rem;
 }}
+[data-testid="stMain"] h3 {{
+  background: {UNDERLINE_SOFT} left bottom 0.45rem / 2.5rem 7px no-repeat;
+}}
+[data-testid="stSidebarHeader"] > :first-child::after {{
+  padding-bottom: 6px; background: {UNDERLINE_SOFT} left bottom / 100% 6px no-repeat;
+}}
+
+/* a link is underlined by hand, the line following the words */
+[data-testid="stMarkdownContainer"] a:not([aria-label="Link to heading"]), .nd-byline a,
+[data-testid="stPageLink-NavLink"] p {{
+  text-decoration: none !important; padding-bottom: 2px;
+  background: {LINK_LINE} left bottom / 100% 5px no-repeat;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}}
+.nd-colophon a, .nd-cite a {{ background-image: {LINK_LINE_QUIET} !important; }}
+
+/* the dash before an item of a list */
+[data-testid="stMarkdownContainer"] ul {{ list-style: none; }}
+[data-testid="stMarkdownContainer"] ul > li {{ position: relative; }}
+[data-testid="stMarkdownContainer"] ul > li::before {{
+  content: ""; position: absolute; left: -1.1rem; top: 0.72em; width: 0.66rem; height: 0.3rem;
+  background: {DASH} center / 100% 100% no-repeat;
+}}
+
+/* a letter that names a panel is ringed; "Fig. 1." is underlined; a check is ticked by hand */
+.nd-panel-head .letter {{
+  display: inline-block; width: 1.55rem; height: 1.55rem; line-height: 1.5rem; text-align: center;
+  margin-right: 0.4rem; font-style: italic; font-family: {SERIF}; font-size: 0.95rem; color: {INK};
+  background: {RING} center / 100% 100% no-repeat;
+}}
+figure.nd-plate figcaption b {{
+  padding-bottom: 2px; background: {UNDERLINE_SOFT} left bottom / 100% 5px no-repeat;
+}}
+.nd-ledger .mark.pass, .nd-ledger .mark.fail {{ padding-left: 1.25rem; }}
+.nd-ledger .mark.pass {{ background: {TICK} left 45% / 0.95rem 0.85rem no-repeat; }}
+.nd-ledger .mark.fail {{ background: {CROSS} left 50% / 0.8rem 0.8rem no-repeat; }}
 
 /* a field is a line to write on, not a box */
 [data-testid="stSelectbox"] div[role="group"], [data-testid="stMultiSelect"] div[role="group"] {{
   background-color: transparent !important; border-color: transparent !important; border-radius: 0 !important;
   box-shadow: none !important;
-  background-image: {RULE_LIGHT}; background-position: left bottom; background-size: 100% 6px;
+  background-image: {RULE_STRONG}; background-position: left bottom; background-size: 100% 6px;
   background-repeat: no-repeat;
 }}
 [data-testid="stSelectbox"] div[role="group"]:hover, [data-testid="stSelectbox"] div[role="group"]:focus-within,
 [data-testid="stMultiSelect"] div[role="group"]:hover, [data-testid="stMultiSelect"] div[role="group"]:focus-within {{
-  background-image: {RULE_STRONG};
+  background-image: {RULE_ACCENT};
 }}
 /* what has been chosen is boxed and lightly shaded */
 [data-testid="stMultiSelectTagsContainer"] span[role="group"] > span {{
@@ -493,20 +553,15 @@ dl.nd-issues dt .nd-label {{ min-width: 5.2rem; }}
 }}
 [data-testid="stMultiSelectTagsContainer"] span[role="group"] > span * {{ color: {INK} !important; fill: {INK} !important; }}
 
-/* a button is a frame drawn by hand; under the pointer it is shaded in */
+/* a button is a box drawn by hand; under the pointer it is shaded in */
 [data-testid="stBaseButton-secondary"], [data-testid="stBaseButton-primary"] {{
   position: relative; background-color: transparent !important; border-color: transparent !important;
   color: {INK} !important; box-shadow: none !important;
 }}
 [data-testid="stBaseButton-secondary"]::before, [data-testid="stBaseButton-primary"]::before,
-[data-testid="stBaseButton-secondary"]::after, [data-testid="stBaseButton-primary"]::after {{
-  content: ""; position: absolute; pointer-events: none; border-radius: 3px;
-}}
-[data-testid="stBaseButton-secondary"]::before, [data-testid="stBaseButton-primary"]::before {{
-  inset: 0; border: 1.3px solid {GRAPHITE}; filter: url(#nd-hand);
-}}
-[data-testid="stBaseButton-secondary"]::after, [data-testid="stBaseButton-primary"]::after {{
-  inset: -1px 1px 1px -1px; border: 1px solid rgba(46, 42, 38, 0.3); filter: url(#nd-hand-2);
+[class*="st-key-nd_frame"]::before, [data-testid="stCheckbox"] label > div:first-of-type::before {{
+  content: ""; position: absolute; inset: -1px; pointer-events: none;
+  border: 7px solid transparent; border-image: {FRAME} 7 / 7px stretch;
 }}
 [data-testid="stBaseButton-secondary"]:hover, [data-testid="stBaseButton-secondary"]:focus-visible {{
   background-image: {HATCH}; color: {INK} !important;
@@ -514,20 +569,17 @@ dl.nd-issues dt .nd-label {{ min-width: 5.2rem; }}
 [data-testid="stBaseButton-secondary"]:hover p {{ color: {INK}; }}
 [data-testid="stBaseButton-primary"] {{ background-image: {HATCH_DENSE}; }}
 [data-testid="stBaseButton-primary"] p {{ color: {INK}; font-weight: 600; }}
-[data-testid="stBaseButton-primary"]::before {{ border-color: {ACCENT}; border-width: 1.6px; }}
+[data-testid="stBaseButton-primary"]::before {{ border-image-source: {FRAME_ACCENT}; }}
 
-/* a framed block (a container given a key that starts with nd_frame) is framed by hand as well */
+/* a framed block (a container given a key that starts with nd_frame) is boxed by hand as well */
 [class*="st-key-nd_frame"] {{ position: relative; border-color: transparent !important; }}
-[class*="st-key-nd_frame"]::before {{
-  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 3px;
-  border: 1.2px solid rgba(46, 42, 38, 0.75); filter: url(#nd-hand);
-}}
+[class*="st-key-nd_frame"]::before {{ inset: 0; border-image-source: {FRAME_QUIET}; }}
 
 /* a box to tick */
 [data-testid="stCheckbox"] label > div:first-of-type {{
-  background-color: transparent !important; border-color: {GRAPHITE} !important; border-width: 1.3px !important;
-  filter: url(#nd-hand);
+  position: relative; background-color: transparent !important; border-color: transparent !important;
 }}
+[data-testid="stCheckbox"] label > div:first-of-type::before {{ inset: -3px; border-width: 6px; border-image-width: 6px; }}
 [data-testid="stCheckbox"] label > div:first-of-type polyline {{ stroke: {ACCENT} !important; stroke-width: 2.8; }}
 
 /* tabs, folds, notes and the edge of the side panel are ruled in pencil too */
@@ -577,11 +629,9 @@ table.nd-table th:last-child, table.nd-table td:last-child {{ padding-right: 0; 
 .js-plotly-plot .main-svg {{ background: transparent !important; }}
 .js-plotly-plot .main-svg .bg {{ fill: transparent !important; }}
 
-/* the lines of a chart are graphite: textured, never displaced */
-.js-plotly-plot .cartesianlayer .scatterlayer,
-.js-plotly-plot .cartesianlayer .gridlayer,
-.js-plotly-plot .cartesianlayer .xlines-above,
-.js-plotly-plot .cartesianlayer .ylines-above {{ filter: url(#nd-graphite); }}
+/* the toolbar of a chart stays out of the way until it is wanted */
+.js-plotly-plot .modebar {{ opacity: 0.45; }}
+.js-plotly-plot .modebar-group {{ background: transparent !important; }}
 </style>
 """
 
@@ -590,7 +640,7 @@ def apply():
     """Register the chart template and write the stylesheet (once per run, from app.py)."""
     pio.templates["nephron"] = _template()
     pio.templates.default = "nephron"
-    st.markdown(CSS + DEFS, unsafe_allow_html=True)
+    st.markdown(CSS, unsafe_allow_html=True)
 
 
 # ============================================================

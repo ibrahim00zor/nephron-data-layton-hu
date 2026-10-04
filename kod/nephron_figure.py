@@ -544,11 +544,30 @@ def locator(segment=None, width=58, links=None, names=None, struck=(), depth=1.0
 #  The mark (logo, favicon)
 # ============================================================
 def mark(background=None):
-    """A glomerulus and a loop. With `background`, on a rounded tile (for the browser tab)."""
-    tile = f"<rect width='32' height='32' rx='6' fill='{background}'/>" if background else ""
+    """A glomerulus and a loop. Drawn by hand for the logo: the loop is found in two passes
+    and the dot is not quite round. With `background` it sits on a rounded tile and is drawn
+    plainly (for the browser tab, where it is a few pixels across)."""
+    if background:
+        return (
+            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'>"
+            f"<rect width='32' height='32' rx='6' fill='{background}'/>"
+            f"<circle cx='8.4' cy='10' r='4.8' fill='{ACCENT}'/>"
+            f"<path d='M13.2,10 H16 a4,4 0 0 1 4,4 V22.5 a3.4,3.4 0 0 0 6.8,0 V6' fill='none' "
+            f"stroke='{INK}' stroke-width='2.3' stroke-linecap='round'/></svg>"
+        )
     return (
         "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'>"
-        f"{tile}<circle cx='8.4' cy='10' r='4.8' fill='{ACCENT}'/>"
-        f"<path d='M13.2,10 H16 a4,4 0 0 1 4,4 V22.5 a3.4,3.4 0 0 0 6.8,0 V6' fill='none' "
-        f"stroke='{INK}' stroke-width='2.3' stroke-linecap='round'/></svg>"
+        "<g fill='none' stroke-linecap='round' stroke-linejoin='round'>"
+        # the looser pass
+        f"<path d='M12.2,10.9 C14.4,9.6 17.4,9.4 19.2,11.4 C20.6,13 20.2,15.4 20.5,17.6 L20.4,22.9 "
+        f"C20.7,25.4 22.6,26.6 24.3,26.1 C26.3,25.5 27.2,23.6 26.9,21.6 L27.3,4.9' "
+        f"stroke='{GRAPHITE}' stroke-width='1.1' opacity='0.38'/>"
+        f"<path d='M8.9,4.6 C5.4,4.3 3,7.2 3.4,10.6 C3.8,14 6.8,15.9 9.9,15.2 C12.9,14.5 14.2,11.6 13.5,8.9 "
+        f"C12.9,6.6 10.9,4.9 8.2,5.2' stroke='{GRAPHITE}' stroke-width='0.9' opacity='0.45'/>"
+        # the firm pass
+        f"<path d='M13.1,10.2 C14.8,9.7 16.6,9.6 18,10.6 C19.6,11.8 20,13.5 19.9,15.3 L20.1,22.3 "
+        f"C20.2,24.7 21.7,26 23.6,25.8 C25.5,25.6 26.8,24.2 26.7,22.1 L26.6,5.9' "
+        f"stroke='{INK}' stroke-width='2.15'/></g>"
+        f"<path d='M8.5,5.4 C11.4,5.2 13.1,7.5 13,10 C12.9,12.7 10.9,14.7 8.3,14.6 C5.6,14.5 3.7,12.5 3.8,9.8 "
+        f"C3.9,7.3 5.8,5.5 8.5,5.4 Z' fill='{ACCENT}'/></svg>"
     )

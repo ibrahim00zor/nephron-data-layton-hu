@@ -47,7 +47,7 @@ else:
                   color_discrete_map=color_map,
                   category_orders={"nephron": ["sup","jux1","jux2","jux3","jux4","jux5"]})
     fig.update_layout(hovermode="x unified", height=480)
-    fig.update_traces(line=dict(width=2))
+    fig.update_traces(line=dict(width=2), hovertemplate="%{y:.4g}")
     st.plotly_chart(fig, width='stretch')
     cite_footer()
 

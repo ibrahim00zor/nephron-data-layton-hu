@@ -103,11 +103,17 @@ Requires `streamlit>=1.52`. The dataset (`veri/nephron_veritabani.parquet`) is u
   - *Paper and pencil.* The page has the tooth of paper (a grain so slight it is felt more than
     seen). What is drawn, the nephron, is drawn as a pencil study: the outline is found in two
     passes, the line wanders a little, and tone is hatched over a pale wash, darker with the
-    value; a segment without data keeps a broken outline and stays empty. What is measured is
-    drawn along a ruler: the lines of every chart and the rules of the page have the texture
-    of graphite, and their position is exact (data is never displaced). Charts sit on the
-    sheet, without a box of their own. On the first view the tubule is drawn in the order the
-    fluid meets the segments.
+    value; a segment without data keeps a broken outline and stays empty. What is measured,
+    the line of a chart, is left exactly as it is. Charts sit on the sheet, without a box of
+    their own. On the first view the tubule is drawn in the order the fluid meets the segments.
+  - *Pencil marks in the text.* Titles are underlined quickly (red pencil under a page, graphite
+    under a section and under the name in the side panel); links are underlined by hand; the
+    letters that name the Home panels are ringed; checks are ticked by hand; list items start
+    with a drawn dash; the logo is drawn in two passes.
+  - *No browser-side filters.* Every pencil mark is a small SVG with its unevenness in the path
+    itself, used as a CSS image. An earlier version applied `filter: url(#...)` to the lines
+    of the charts; Safari then drew the charts without their lines. `tools/webkit_shot.swift`
+    renders a page in WebKit off screen, so this can be checked without Safari.
   - *The sidebar map is a control.* A click on a segment selects it; the long loop is drawn to
     the depth of the selected juxtamedullary nephron.
   - *The address carries the selection.* The URL of a page always holds what the page shows
