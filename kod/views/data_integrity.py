@@ -3,6 +3,7 @@ import os
 import streamlit as st
 
 import nephron_figure
+import style
 from ui_kit import q, DB, PARQUET, integrity_map, segment_names
 
 st.markdown("## Data Integrity")
@@ -16,7 +17,7 @@ st.markdown("### What is in the table")
 
 st.markdown("<div class='nd-label'>Rows per scenario</div>", unsafe_allow_html=True)
 by_cond = q(f"SELECT condition AS scenario, COUNT(*) AS rows FROM {DB} GROUP BY condition ORDER BY condition")
-st.dataframe(by_cond, width='stretch', hide_index=True)
+style.table(by_cond)
 
 c1, c2 = st.columns(2, gap="large")
 with c1:
@@ -26,18 +27,18 @@ with c1:
                COUNT(DISTINCT solute) AS solutes, COUNT(DISTINCT compartment) AS compartments
         FROM {DB} GROUP BY variable ORDER BY rows DESC
     """)
-    st.dataframe(by_var, width='stretch', hide_index=True)
+    style.table(by_var)
 with c2:
     st.markdown("<div class='nd-label'>By segment</div>", unsafe_allow_html=True)
     by_seg = q(f"""
         SELECT segment, COUNT(DISTINCT nephron) AS nephron_types, COUNT(*) AS rows
         FROM {DB} GROUP BY segment ORDER BY rows DESC
     """)
-    st.dataframe(by_seg, width='stretch', hide_index=True)
+    style.table(by_seg)
 
 st.markdown("<div class='nd-label'>By nephron type</div>", unsafe_allow_html=True)
 by_neph = q(f"SELECT nephron, COUNT(*) AS rows FROM {DB} GROUP BY nephron ORDER BY rows DESC")
-st.dataframe(by_neph, width='stretch', hide_index=True)
+style.table(by_neph)
 
 # ------------------------------------------------------------
 #  Convergence
@@ -68,7 +69,7 @@ st.markdown(
 integ["status"] = integ.apply(
     lambda r: "clean" if (r["nan"] == 0 and r["negative_osm"] == 0)
     else "collecting duct did not converge (proximal segments fine)", axis=1)
-st.dataframe(integ, width='stretch', hide_index=True)
+style.table(integ)
 
 # ------------------------------------------------------------
 #  Things to know

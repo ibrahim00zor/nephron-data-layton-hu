@@ -116,7 +116,7 @@ else:
 
     with st.expander("Download CSV and summary table"):
         summary_tbl = df.groupby("compartment")["value"].agg(["min", "max", "mean"]).round(3)
-        st.dataframe(summary_tbl)
+        style.table(summary_tbl, index=True)
         st.download_button("Download CSV", df.to_csv(index=False).encode("utf-8"),
                            file_name=f"{scenario}_{segment}_{solute}_{nephron}.csv",
                            mime="text/csv")

@@ -92,6 +92,14 @@ Requires `streamlit>=1.52`. The dataset (`veri/nephron_veritabani.parquet`) is u
     against the interstitium, with ways on to Segment Profile and Transporters. The long loops
     of the juxtamedullary nephrons (one target, five bend values), the glomerulus and the
     macula densa can be pointed at too. The areas to point at are wide (30 px around a line).
+  - *One hand, everywhere.* The rest of the page is in the hand of the figure. Labels are
+    written the way the figure is annotated (small, italic, in the reading face) instead of
+    in capitals. A field is a line to write on, not a box; what has been chosen is boxed and
+    lightly shaded. A button is a frame drawn by hand and is shaded in under the pointer; a
+    box to tick is drawn, and ticked in red pencil. Page titles are underlined quickly in red
+    pencil. Tabs, folds, notes and the edge of the side panel are ruled in pencil. Tables are
+    ruled by hand (`style.table`), words in serif and numbers in mono, instead of spreadsheet
+    grids. The interactive anatomy drawing uses the same pencil, outlines and labels.
   - *Paper and pencil.* The page has the tooth of paper (a grain so slight it is felt more than
     seen). What is drawn, the nephron, is drawn as a pencil study: the outline is found in two
     passes, the line wanders a little, and tone is hatched over a pale wash, darker with the

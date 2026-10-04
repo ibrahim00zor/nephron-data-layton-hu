@@ -338,7 +338,7 @@ def make_chart(df, x, y, color, title, xlab, ylab, color_label="Series",
                       labels={x: xlab, y: ylab, color: color_label},
                       category_orders=category_orders or {})
     fig.update_layout(hovermode="x unified", height=height,
-                      legend=dict(title_text=color_label.upper()))
+                      legend=dict(title_text=f"<i>{color_label}</i>"))
     if legend_below:   # long series names: give the plot the full width
         fig.update_layout(legend=dict(orientation="h", title_text="", x=0, xanchor="left",
                                       y=-0.2, yanchor="top"))

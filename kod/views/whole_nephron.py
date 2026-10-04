@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 
 import nav
+import style
 from ui_kit import (
     q, DB, make_chart, cite_footer, neph_for,
     options, SEG_ORDER_SUP, SEG_ORDER_JUX, valid_data, segment_broken,
@@ -68,4 +69,4 @@ else:
                                                outlet=("value", "last")).round(2)
                        .reindex(order).dropna())
         summary["ratio"] = (summary["outlet"] / summary["inlet"]).round(2)
-        st.dataframe(summary, width='stretch')
+        style.table(summary, index=True)

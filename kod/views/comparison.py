@@ -4,6 +4,7 @@ import streamlit as st
 import plotly.express as px
 
 import nav
+import style
 from ui_kit import (
     q, DB, cite_footer, neph_for,
     options, scenario_list, SCENARIO_COLOR, SCENARIO_LABEL, NEPHRONS, valid_data, segment_broken,
@@ -97,7 +98,7 @@ if ref in summary.index:
     ref_outlet = summary.loc[ref, "outlet"]
     summary["vs_reference_%"] = ((summary["outlet"] - ref_outlet) / ref_outlet * 100).round(1)
 
-st.dataframe(summary, width='stretch')
+style.table(summary.rename_axis("scenario"), index=True)
 
 # Automatic observation
 if len(summary) >= 2 and "vs_reference_%" in summary.columns:

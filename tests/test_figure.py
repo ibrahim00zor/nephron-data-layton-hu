@@ -126,3 +126,28 @@ def test_hover_styles_cover_everything_that_can_be_pointed_at():
 def test_mark_is_well_formed():
     _parse(figure.mark())
     _parse(figure.mark(background="#ffffff"))
+
+
+def test_tables_are_ruled_by_hand_and_keep_their_numbers():
+    import pandas as pd
+    from streamlit.testing.v1 import AppTest
+
+    script = f"""
+import sys
+sys.path.insert(0, {KOD!r})
+import pandas as pd
+import style
+frame = pd.DataFrame({{"scenario": ["F_normal", "A & B"], "rows": [1033065, 12],
+                      "value": [137.48, float("nan")], "command": ["python3 x.py --a", "<b>"]}})
+style.table(frame, code=("command",))
+style.table(frame.set_index("scenario"), index=True)
+"""
+    at = AppTest.from_string(script, default_timeout=60).run()
+    assert not at.exception, [str(e.value) for e in at.exception]
+    first, second = (m.value for m in at.markdown)
+    _parse(first)                                  # text is escaped ("A & B", "<b>")
+    assert "1,033,065" in first and "137.48" in first and "—" in first
+    assert "A &amp; B" in first and "&lt;b&gt;" in first
+    assert "<td class='code'>python3 x.py --a</td>" in first
+    assert "<td class='key'>F_normal</td>" in second and "<th>scenario</th>" in second
+

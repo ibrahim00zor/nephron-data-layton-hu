@@ -103,22 +103,56 @@ _MOTTLE = _svg_url(
 PAPER_TEXTURE = f"{_GRAIN}, {_MOTTLE}"
 
 
-def _rule(colour, weight):
-    """A line ruled in pencil: straight, but with the grain and the uneven pressure of graphite."""
+_TOOTH = ("<filter id='t' x='0' y='0' width='100%' height='100%'>"
+          "<feTurbulence type='fractalNoise' baseFrequency='0.5 0.9' numOctaves='2' seed='5'/>"
+          "<feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.5 1.55'/>"
+          "<feComposite in='SourceGraphic' operator='in'/></filter>")
+
+
+def _rule(colour, weight, upright=False):
+    """A line ruled in pencil: straight, but with the grain and the uneven pressure of graphite.
+    Lying down by default; `upright` for a line that runs down the page."""
+    if upright:
+        box = "0 0 6 1200"
+        first = "M3.1,3 C2.7,210 3.5,430 3,650 S2.8,1010 3.2,1197"
+        second = "M3.5,60 C3.1,330 3.4,720 2.9,1140"
+    else:
+        box = "0 0 1200 6"
+        first = "M3,3.1 C210,2.7 430,3.5 650,3 S1010,2.8 1197,3.2"
+        second = "M60,3.5 C330,3.1 720,3.4 1140,2.9"
     return _svg_url(
-        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 6' preserveAspectRatio='none'>"
-        "<filter id='t' x='0' y='0' width='100%' height='100%'>"
-        "<feTurbulence type='fractalNoise' baseFrequency='0.5 0.9' numOctaves='2' seed='5'/>"
-        "<feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.5 1.55'/>"
-        "<feComposite in='SourceGraphic' operator='in'/></filter>"
+        f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='{box}' preserveAspectRatio='none'>{_TOOTH}"
         f"<g filter='url(#t)' fill='none' stroke='{colour}' stroke-linecap='round'>"
-        f"<path d='M3,3.1 C210,2.7 430,3.5 650,3 S1010,2.8 1197,3.2' stroke-width='{weight}'/>"
-        f"<path d='M60,3.5 C330,3.1 720,3.4 1140,2.9' stroke-width='{weight * 0.55:.2f}' opacity='0.45'/>"
+        f"<path d='{first}' stroke-width='{weight}'/>"
+        f"<path d='{second}' stroke-width='{weight * 0.55:.2f}' opacity='0.45'/>"
         "</g></svg>")
 
 
 RULE_STRONG = _rule(GRAPHITE, 1.25)
 RULE_LIGHT = _rule("#8d8573", 1.0)
+RULE_ACCENT = _rule(ACCENT, 1.5)
+UPRIGHT_STRONG = _rule(GRAPHITE, 1.3, upright=True)
+UPRIGHT_LIGHT = _rule("#8d8573", 1.0, upright=True)
+UPRIGHT_ACCENT = _rule(ACCENT, 1.6, upright=True)
+
+# the quick line drawn under a title
+UNDERLINE = _svg_url(
+    f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'>{_TOOTH}"
+    f"<g filter='url(#t)' fill='none' stroke='{ACCENT}' stroke-linecap='round'>"
+    "<path d='M2,5.4 C30,3.7 72,6.5 118,4.3' stroke-width='1.7'/>"
+    "<path d='M9,7.5 C42,6.3 80,8 110,6.7' stroke-width='0.9' opacity='0.5'/></g></svg>")
+
+
+def _hatch(step, opacity):
+    """Pencil hatching, as a tile: what a button looks like when it is shaded in."""
+    return _svg_url(
+        f"<svg xmlns='http://www.w3.org/2000/svg' width='{step}' height='{step}'>"
+        f"<path d='M-1,{step + 1} L{step + 1},-1 M-1,1 L1,-1 M{step - 1},{step + 1} L{step + 1},{step - 1}' "
+        f"stroke='{GRAPHITE}' stroke-width='0.8' opacity='{opacity}'/></svg>")
+
+
+HATCH = _hatch(7, 0.26)
+HATCH_DENSE = _hatch(5, 0.4)
 
 # Filters the page's own SVG (the charts) can refer to. Written once, with the stylesheet.
 DEFS = (
@@ -130,6 +164,15 @@ DEFS = (
     "<feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='7' result='grain'/>"
     "<feColorMatrix in='grain' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.25 1.5' result='tooth'/>"
     "<feComposite in='SourceGraphic' in2='tooth' operator='in'/></filter>"
+    # the hand: for a frame drawn around a button or a box (never around text or data)
+    "<filter id='nd-hand' x='-4%' y='-25%' width='108%' height='150%'>"
+    "<feTurbulence type='fractalNoise' baseFrequency='0.028' numOctaves='2' seed='3' result='hand'/>"
+    "<feDisplacementMap in='SourceGraphic' in2='hand' scale='2.6' xChannelSelector='R' yChannelSelector='G'/>"
+    "</filter>"
+    "<filter id='nd-hand-2' x='-4%' y='-25%' width='108%' height='150%'>"
+    "<feTurbulence type='fractalNoise' baseFrequency='0.035' numOctaves='2' seed='17' result='hand'/>"
+    "<feDisplacementMap in='SourceGraphic' in2='hand' scale='4' xChannelSelector='G' yChannelSelector='R'/>"
+    "</filter>"
     "</defs></svg>"
 )
 
@@ -154,10 +197,10 @@ def _template():
         plot_bgcolor="rgba(0,0,0,0)",
         colorway=SERIES,
         xaxis=dict(showgrid=False, **axis),
-        yaxis=dict(showgrid=True, gridcolor=RULE_SOFT, gridwidth=1, griddash="dot", **axis),
+        yaxis=dict(showgrid=True, gridcolor="rgba(46, 42, 38, 0.13)", gridwidth=1, **axis),
         legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0,
                     font=dict(family=SERIF, size=12.5, color=INK_SOFT),
-                    title=dict(font=dict(family=MONO, size=10.5, color=MUTED))),
+                    title=dict(font=dict(family=SERIF, size=12.5, color=MUTED))),
         hoverlabel=dict(bgcolor=PAPER, bordercolor=RULE, font=dict(family=MONO, size=12, color=INK)),
         margin=dict(l=56, r=16, t=46, b=46),
     ))
@@ -413,12 +456,130 @@ hr {{ border: 0; height: 6px; background: {RULE_LIGHT} center / 100% 6px no-repe
 dl.nd-issues dt {{ padding-top: 0.85rem; }}
 .nd-ledger {{ border-bottom: 0; background: {RULE_LIGHT} bottom left / 100% 6px no-repeat; padding-bottom: 5px; }}
 
+/* ---------- the whole page in the hand of the figure ---------- */
+/* labels are written the way the figure is annotated: small, italic, in the reading face */
+[data-testid="stWidgetLabel"] p, [data-testid="stMetricLabel"] p, [data-testid="stNavSectionHeader"] p,
+.nd-label, .nd-kicker, [data-testid^="stAlertContent"]::before, .nd-card .hint {{
+  font-family: {SERIF}; font-style: italic; font-weight: 400; text-transform: none; letter-spacing: 0;
+}}
+[data-testid="stWidgetLabel"] p {{ font-size: 0.95rem; color: {INK_SOFT}; }}
+[data-testid="stMetricLabel"] p, .nd-label {{ font-size: 0.92rem; color: {MUTED}; }}
+[data-testid="stNavSectionHeader"] p {{ font-size: 0.92rem; color: {MUTED}; }}
+[data-testid^="stAlertContent"]::before {{ font-size: 0.9rem; margin-bottom: 0.05rem; }}
+.nd-kicker {{ font-size: 0.95rem; color: {ACCENT}; margin: 0 0 -0.85rem; }}
+.nd-card .hint {{ font-size: 0.8rem; }}
+dl.nd-issues dt .nd-label {{ min-width: 5.2rem; }}
+
+/* a page title is underlined, quickly, in red pencil */
+[data-testid="stMain"] h2 {{
+  background: {UNDERLINE} left bottom 0.35rem / 4.6rem 9px no-repeat; padding-bottom: 1.05rem;
+}}
+
+/* a field is a line to write on, not a box */
+[data-testid="stSelectbox"] div[role="group"], [data-testid="stMultiSelect"] div[role="group"] {{
+  background-color: transparent !important; border-color: transparent !important; border-radius: 0 !important;
+  box-shadow: none !important;
+  background-image: {RULE_LIGHT}; background-position: left bottom; background-size: 100% 6px;
+  background-repeat: no-repeat;
+}}
+[data-testid="stSelectbox"] div[role="group"]:hover, [data-testid="stSelectbox"] div[role="group"]:focus-within,
+[data-testid="stMultiSelect"] div[role="group"]:hover, [data-testid="stMultiSelect"] div[role="group"]:focus-within {{
+  background-image: {RULE_STRONG};
+}}
+/* what has been chosen is boxed and lightly shaded */
+[data-testid="stMultiSelectTagsContainer"] span[role="group"] > span {{
+  background-color: transparent !important; background-image: {HATCH}; color: {INK} !important;
+  border: 1px solid rgba(46, 42, 38, 0.55); border-radius: 2px;
+}}
+[data-testid="stMultiSelectTagsContainer"] span[role="group"] > span * {{ color: {INK} !important; fill: {INK} !important; }}
+
+/* a button is a frame drawn by hand; under the pointer it is shaded in */
+[data-testid="stBaseButton-secondary"], [data-testid="stBaseButton-primary"] {{
+  position: relative; background-color: transparent !important; border-color: transparent !important;
+  color: {INK} !important; box-shadow: none !important;
+}}
+[data-testid="stBaseButton-secondary"]::before, [data-testid="stBaseButton-primary"]::before,
+[data-testid="stBaseButton-secondary"]::after, [data-testid="stBaseButton-primary"]::after {{
+  content: ""; position: absolute; pointer-events: none; border-radius: 3px;
+}}
+[data-testid="stBaseButton-secondary"]::before, [data-testid="stBaseButton-primary"]::before {{
+  inset: 0; border: 1.3px solid {GRAPHITE}; filter: url(#nd-hand);
+}}
+[data-testid="stBaseButton-secondary"]::after, [data-testid="stBaseButton-primary"]::after {{
+  inset: -1px 1px 1px -1px; border: 1px solid rgba(46, 42, 38, 0.3); filter: url(#nd-hand-2);
+}}
+[data-testid="stBaseButton-secondary"]:hover, [data-testid="stBaseButton-secondary"]:focus-visible {{
+  background-image: {HATCH}; color: {INK} !important;
+}}
+[data-testid="stBaseButton-secondary"]:hover p {{ color: {INK}; }}
+[data-testid="stBaseButton-primary"] {{ background-image: {HATCH_DENSE}; }}
+[data-testid="stBaseButton-primary"] p {{ color: {INK}; font-weight: 600; }}
+[data-testid="stBaseButton-primary"]::before {{ border-color: {ACCENT}; border-width: 1.6px; }}
+
+/* a framed block (a container given a key that starts with nd_frame) is framed by hand as well */
+[class*="st-key-nd_frame"] {{ position: relative; border-color: transparent !important; }}
+[class*="st-key-nd_frame"]::before {{
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 3px;
+  border: 1.2px solid rgba(46, 42, 38, 0.75); filter: url(#nd-hand);
+}}
+
+/* a box to tick */
+[data-testid="stCheckbox"] label > div:first-of-type {{
+  background-color: transparent !important; border-color: {GRAPHITE} !important; border-width: 1.3px !important;
+  filter: url(#nd-hand);
+}}
+[data-testid="stCheckbox"] label > div:first-of-type polyline {{ stroke: {ACCENT} !important; stroke-width: 2.8; }}
+
+/* tabs, folds, notes and the edge of the side panel are ruled in pencil too */
+[data-testid="stTabs"] [role="tablist"] {{
+  background: {RULE_LIGHT} left bottom / 100% 6px no-repeat; box-shadow: none !important; border: 0 !important;
+}}
+[data-testid="stTab"][aria-selected="true"] {{ background: {RULE_ACCENT} left bottom / 100% 6px no-repeat; }}
+[data-testid="stTab"][aria-selected="true"] p {{ color: {INK}; font-weight: 600; }}
+[data-testid="stExpander"] details {{
+  border: 0; background: {RULE_LIGHT} left top / 100% 6px no-repeat, {RULE_LIGHT} left bottom / 100% 6px no-repeat;
+  padding: 3px 0;
+}}
+[data-testid="stExpanderDetails"] {{ border-top: 0 !important; }}
+[data-testid="stAlertContainer"], .nd-note {{
+  border-left: 0; background: {UPRIGHT_STRONG} left top / 6px 100% no-repeat; padding-left: 1.15rem;
+}}
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentWarning"]),
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentError"]), .nd-note.accent {{
+  background-image: {UPRIGHT_ACCENT};
+}}
+.nd-ledger .how {{ border-left: 0; background: {UPRIGHT_LIGHT} left top / 6px 100% no-repeat; padding-left: 0.95rem; }}
+[data-testid="stSidebar"] {{ border-right-color: transparent !important; }}
+[data-testid="stSidebarContent"] {{
+  background-image: {UPRIGHT_LIGHT}, {PAPER_TEXTURE};
+  background-position: right top, 0 0, 0 0; background-size: 6px 100%, auto, auto;
+  background-repeat: no-repeat, repeat, repeat; background-attachment: local;
+}}
+[data-testid="stSidebarNavLink"][aria-current="page"] {{
+  border-left-color: transparent; background: {UPRIGHT_ACCENT} left center / 6px 78% no-repeat;
+}}
+
+/* a table is ruled by hand: words in the reading face, numbers in the counting face */
+.nd-scroll {{ overflow-x: auto; margin: 0.2rem 0 0.7rem; }}
+table.nd-table {{ width: 100%; border-collapse: collapse; font-size: 0.93rem; }}
+table.nd-table th, table.nd-table td {{ border: 0; padding: 0.42rem 1.1rem 0.5rem 0; vertical-align: baseline; text-align: left; }}
+table.nd-table th {{ font-style: italic; font-weight: 400; color: {MUTED}; white-space: nowrap; }}
+table.nd-table thead tr {{ background: {RULE_STRONG} left bottom / 100% 6px no-repeat; }}
+table.nd-table tbody tr {{ background: {RULE_LIGHT} left bottom / 100% 6px no-repeat; }}
+table.nd-table tbody tr:hover td {{ color: {ACCENT}; }}
+table.nd-table .num {{ text-align: right; font-family: {MONO}; font-size: 0.84rem; white-space: nowrap; }}
+table.nd-table th.num {{ font-family: {SERIF}; font-size: 0.93rem; }}
+table.nd-table td.key {{ font-weight: 600; white-space: nowrap; }}
+table.nd-table td.code {{ font-family: {MONO}; font-size: 0.78rem; color: {INK_SOFT}; word-break: break-word; }}
+table.nd-table th:last-child, table.nd-table td:last-child {{ padding-right: 0; }}
+
 /* a chart is drawn on the same sheet: no box of its own under it */
 .js-plotly-plot .main-svg {{ background: transparent !important; }}
 .js-plotly-plot .main-svg .bg {{ fill: transparent !important; }}
 
 /* the lines of a chart are graphite: textured, never displaced */
 .js-plotly-plot .cartesianlayer .scatterlayer,
+.js-plotly-plot .cartesianlayer .gridlayer,
 .js-plotly-plot .cartesianlayer .xlines-above,
 .js-plotly-plot .cartesianlayer .ylines-above {{ filter: url(#nd-graphite); }}
 </style>
@@ -478,3 +639,46 @@ def ledger(rows):
         else:
             parts.append(f"<div class='row'><div class='cells'>{cells}</div></div>")
     st.markdown(f"<div class='nd-ledger'>{''.join(parts)}</div>", unsafe_allow_html=True)
+
+
+def _cell(value):
+    """(text, is a number) for one value of a table."""
+    if value is None or (isinstance(value, float) and value != value):
+        return "—", True
+    if isinstance(value, bool):
+        return ("yes" if value else "no"), False
+    if isinstance(value, int) or (hasattr(value, "dtype") and getattr(value.dtype, "kind", "") in "iu"):
+        return f"{int(value):,}", True
+    if isinstance(value, float) or (hasattr(value, "dtype") and getattr(value.dtype, "kind", "") == "f"):
+        value = float(value)
+        if value == int(value) and abs(value) < 1e15:
+            return f"{int(value):,}", True
+        text = f"{value:,.1f}" if abs(value) >= 1000 else f"{value:.4f}".rstrip("0").rstrip(".")
+        return text, True
+    return str(value), False
+
+
+def table(df, index=False, code=()):
+    """A table ruled by hand (HTML). Words are set in serif, numbers in mono and to the right.
+
+    index: show the index as a first, emphasised column.
+    code:  columns whose text is code (commands, file names): set small, in mono, and wrapped.
+    """
+    columns = list(df.columns)
+    numeric = {c for c in columns if getattr(df[c].dtype, "kind", "O") in "iuf"}
+    head = "".join(f"<th class='{'num' if c in numeric else ''}'>{html.escape(str(c))}</th>" for c in columns)
+    if index:
+        head = f"<th>{html.escape(str(df.index.name or ''))}</th>" + head
+    body = []
+    for key, row in zip(df.index, df.itertuples(index=False)):
+        cells = [f"<td class='key'>{html.escape(str(key))}</td>"] if index else []
+        for column, value in zip(columns, row):
+            text, number = _cell(value)
+            css = "num" if (number and column in numeric) else ("code" if column in code else "")
+            cells.append(f"<td class='{css}'>{html.escape(text)}</td>")
+        body.append(f"<tr>{''.join(cells)}</tr>")
+    st.markdown(
+        f"<div class='nd-scroll'><table class='nd-table'><thead><tr>{head}</tr></thead>"
+        f"<tbody>{''.join(body)}</tbody></table></div>",
+        unsafe_allow_html=True,
+    )

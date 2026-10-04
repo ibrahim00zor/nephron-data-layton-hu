@@ -12,6 +12,7 @@ import plotly
 import streamlit as st
 
 import run_scenarios
+import style
 from ui_kit import (
     q, DB, PARQUET, SCENARIO_LABEL, integrity_map, references_box, scenario_list,
 )
@@ -59,7 +60,7 @@ for code, flags, _folder in run_scenarios.all_scenarios():
         "rows": f"{int(rows_by_scenario[code]):,}" if code in rows_by_scenario.index else "—",
         "model command": run_scenarios.command(flags),
     })
-st.dataframe(pd.DataFrame(table), hide_index=True, width='stretch')
+style.table(pd.DataFrame(table), code=("model command",))
 st.caption(f"{len(in_dataset)} of {len(table)} targeted scenarios are in the dataset. The commands are read from "
            f"`kod/run_scenarios.py`, the script that generated the library.")
 
@@ -91,7 +92,7 @@ for name, segment, position in anchors:
     osm = values[values["variable"] == "osmolality"]["value"]
     row["osmolality (mOsm)"] = round(float(osm.iloc[0]), 1) if len(osm) else None
     rows.append(row)
-st.dataframe(pd.DataFrame(rows), hide_index=True, width='stretch')
+style.table(pd.DataFrame(rows))
 st.caption("Interstitial composition around the collecting duct, read from the dataset "
            "(`compartment='Bath'`). These are inputs: they describe the setting the tubule is placed "
            "in, not a result of the simulation.")

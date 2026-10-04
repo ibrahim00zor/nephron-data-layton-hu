@@ -140,7 +140,7 @@ if case_key == "SGLT2":
     glu_n, glu_s = _outlet(df_glu, "Normal"), _outlet(df_glu, case["label"])
 
     # --- Patient summary card ---
-    with st.container(border=True):
+    with st.container(border=True, key="nd_frame_1"):
         st.markdown("##### Patient summary")
         style.pending("Not written yet. The patient profile and clinical context wait for the source article.")
         k1, k2, k3 = st.columns(3)
@@ -210,7 +210,7 @@ elif case_key == "Hyperfiltration":
     reab_n, reab_d = _absorbed(df_na_flow_pt, "Normal"), _absorbed(df_na_flow_pt, case["label"])
 
     # --- Patient summary card ---
-    with st.container(border=True):
+    with st.container(border=True, key="nd_frame_2"):
         st.markdown("##### Patient summary")
         style.pending("Not written yet. The patient profile and clinical context wait for the source article.")
         k1, k2 = st.columns(2)
@@ -273,7 +273,7 @@ elif case_key == "Hypertension":
     fout_n, fout_h = _outlet(df_na_flow_tal, "Normal"), _outlet(df_na_flow_tal, case["label"])
 
     # --- Patient summary card ---
-    with st.container(border=True):
+    with st.container(border=True, key="nd_frame_3"):
         st.markdown("##### Patient summary")
         style.pending("Not written yet. The patient profile and clinical context wait for the source article.")
         k1, k2 = st.columns(2)

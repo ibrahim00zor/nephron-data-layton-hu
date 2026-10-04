@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 
 import nav
+import style
 import transport as T
 from ui_kit import (
     cite_footer, make_chart, neph_for, options, scenario_list,
@@ -81,7 +82,7 @@ with tab_one:
             table = table.rename(columns={"inlet": f"inlet ({T.FLUX_UNIT_LABEL})",
                                           "outlet": f"outlet ({T.FLUX_UNIT_LABEL})",
                                           "mean": f"mean ({T.FLUX_UNIT_LABEL})"})
-            st.dataframe(table, width='stretch')
+            style.table(table, index=True)
             if not integrable:
                 st.caption(f"No whole-segment total for `{segment}`: it is a coalescing tubule and its "
                            f"intercalated-cell pathways are not exported, so only the flux density is shown.")
@@ -155,7 +156,7 @@ with tab_many:
         table = table.rename(columns={"inlet": f"inlet ({T.FLUX_UNIT_LABEL})",
                                       "outlet": f"outlet ({T.FLUX_UNIT_LABEL})",
                                       "mean": f"mean ({T.FLUX_UNIT_LABEL})"})
-        st.dataframe(table, width='stretch')
+        style.table(table, index=True)
 
 cite_footer()
 
@@ -188,7 +189,6 @@ and K⁺ across the apical membrane and the tight junction. The other series are
             for (seg, t), m in T.MEMBRANES.items() if seg == segment]
     if rows:
         st.markdown(f"**Transporters of `{segment}` and their membranes** (from the model's parameter files)")
-        st.dataframe(pd.DataFrame(rows, columns=["transporter", "membrane(s)", "side"]),
-                     hide_index=True, width='stretch')
+        style.table(pd.DataFrame(rows, columns=["transporter", "membrane(s)", "side"]))
         st.caption("Where a transporter sits on several basolateral membranes, the dataset does not keep "
                    "the membrane label, so those profiles are summed (total basolateral flux).")
