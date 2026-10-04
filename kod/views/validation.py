@@ -1,9 +1,10 @@
-"""5_Validation.py — Automatic physiology checks."""
+"""validation.py — Automatic physiology checks."""
 import streamlit as st
-from ui_kit import setup_page, render_sidebar, DB, scalar, SCENARIO_LABEL
 
-setup_page("Validation")
-scenario = render_sidebar()
+import nav
+from ui_kit import DB, scalar, SCENARIO_LABEL
+
+scenario = nav.get("scenario")
 
 st.markdown("## Automatic Physiology Validation")
 st.caption(f"Active scenario: **{SCENARIO_LABEL.get(scenario, scenario)}**. "

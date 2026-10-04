@@ -1,13 +1,12 @@
-"""3_Nephron_Types.py — sup vs jux1-5 comparison."""
+"""nephron_types.py — sup vs jux1-5 comparison."""
 import streamlit as st
 import plotly.express as px
-from ui_kit import (
-    setup_page, render_sidebar, q, DB, cite_footer, options, CD_SEGMENTS, valid_data,
-)
+
+import nav
+from ui_kit import q, DB, cite_footer, options, CD_SEGMENTS, valid_data
 from education import segment_info, cite_short
 
-setup_page("Nephron Types")
-scenario = render_sidebar()
+scenario = nav.get("scenario")
 
 st.markdown("## Compare Nephron Types")
 st.caption("For the same segment + solute + compartment, sup and jux1–5 are overlaid. "
@@ -17,9 +16,14 @@ segs, solutes = options()
 compare_segs = [s for s in segs if s not in CD_SEGMENTS]
 
 c1, c2, c3 = st.columns(3)
-solute = c1.selectbox("Solute", solutes, index=solutes.index("Na"))
-segment = c2.selectbox("Segment", compare_segs)
-compartment = c3.selectbox("Compartment", ["Lumen", "Cell", "Bath"])
+solute = nav.select(c1, "Solute", solutes, "solute", fallback="Na")
+segment = nav.select(c2, "Segment", compare_segs, "segment", fallback="PT")
+compartment = nav.select(c3, "Compartment", ["Lumen", "Cell", "Bath"], "compartment", fallback="Lumen")
+
+if nav.get("segment") in CD_SEGMENTS:
+    st.info(f"`{nav.get('segment')}` is a collecting-duct segment, shared by all nephron types "
+            f"(merged), so there is nothing to compare here — showing `{segment}` instead. "
+            f"Your selection is unchanged on the other pages.")
 
 df = q(
     f"""SELECT position, value, nephron FROM {DB}

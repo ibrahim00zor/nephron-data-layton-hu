@@ -1,18 +1,14 @@
-"""7_Interactive_Anatomy_BETA.py — D3.js integration (v2)
+"""anatomy.py — Interactive anatomy (D3.js).
 Anatomic nephron diagram: osmolality-gradient background, dynamic thickness by flow,
-and a concentration heatmap."""
+and a concentration heatmap. The segment in the shared selection is highlighted."""
 import os
 import json
 import streamlit as st
-import streamlit.components.v1 as components
 
-from ui_kit import (
-    setup_page, render_sidebar, q, DB,
-    options, NEPHRONS, segment_broken, PROJ, CD_SEGMENTS
-)
+import nav
+from ui_kit import q, DB, options, NEPHRONS, segment_broken, PROJ, CD_SEGMENTS
 
-setup_page("Interactive Anatomy (BETA)")
-active_scenario = render_sidebar()
+active_scenario = nav.get("scenario")
 
 st.markdown("## Interactive Anatomy (BETA)")
 st.caption(
@@ -23,16 +19,15 @@ st.caption(
     "The flow animation conveys water flow via particle speed; click a segment to pin its profile to the chart."
 )
 
-# --- Top selectors ---
-c1, c2, c3 = st.columns(3)
-_, sol = options()
-solute = c1.selectbox("Solute", sol, index=sol.index("Na") if "Na" in sol else 0)
-compartment = c2.selectbox("Compartment", ["Lumen", "Cell", "Bath"], index=0)
-nephron_req = c3.selectbox(
-    "Nephron type (CD segments become 'merged' automatically)",
-    NEPHRONS,
-    index=NEPHRONS.index("sup"),
-)
+# --- Top selectors (bound to the shared selection) ---
+c1, c2, c3, c4 = st.columns(4)
+segs, sol = options()
+solute = nav.select(c1, "Solute", sol, "solute", fallback="Na")
+compartment = nav.select(c2, "Compartment", ["Lumen", "Cell", "Bath"], "compartment", fallback="Lumen")
+nephron_req = nav.select(c3, "Nephron type (CD segments are 'merged')", NEPHRONS, "nephron", fallback="sup")
+focus = nav.select(c4, "Highlighted segment", segs, "segment", fallback="PT",
+                   help="The segment in your selection. It is highlighted on the diagram and is the "
+                        "one the other pages open with.")
 
 st.markdown("---")
 
@@ -108,7 +103,7 @@ flow_max = max(all_flows) if all_flows else 100
 # 2b) Solute LOAD (load = molar flux, pmol/min) — for the color mode
 # ============================================================
 # Concentration misleads; for reabsorption/delivery look at MASS (flux). This mode makes
-# the "golden rule" from the page-8 science audit visible on the diagram.
+# the "golden rule" from the clinical-page science audit visible on the diagram.
 load_data = {}
 for segment in segments_data.keys():
     target_nephron = "merged" if segment in cd_segs else nephron_req
@@ -178,6 +173,7 @@ injected_data = {
     "load": load_data,
     "gradient_stops": gradient_stops,
     "nephron_type": nephron_req,
+    "focus": focus,
 }
 
 # ============================================================
@@ -194,7 +190,11 @@ except FileNotFoundError:
 json_str = json.dumps(injected_data, ensure_ascii=False)
 html_rendered = html_template.replace("__INJECTED_DATA__", json_str)
 
-components.html(html_rendered, height=870, scrolling=False)
+if hasattr(st, "iframe"):
+    st.iframe(html_rendered, height=870)
+else:  # older Streamlit: the component API that st.iframe replaces
+    import streamlit.components.v1 as components
+    components.html(html_rendered, height=870, scrolling=False)
 
 # Model-limit note (kept short and understated by design; readers who dig will find it)
 st.caption(

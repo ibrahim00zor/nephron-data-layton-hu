@@ -1,8 +1,9 @@
 """
-8_Clinical.py — Clinical World — Educational Interface
+clinical.py — Clinical World — Educational Interface
 
-The second leg of the project's "two-world" architecture. The model world (pages 1-7)
-inspects data; this page combines clinical context, an example case, and model data.
+The second leg of the project's "two-world" architecture. The model world inspects data;
+this page combines clinical context, an example case, and model data, and links each case
+back into the model pages with its scenarios and focus preselected.
 
 SAFETY / FRAMING:
 - EDUCATIONAL; NOT clinical decision support.
@@ -12,12 +13,10 @@ SAFETY / FRAMING:
 """
 import streamlit as st
 import plotly.express as px
-from ui_kit import (
-    setup_page, render_sidebar, q, DB, cite_footer, references_box
-)
 
-setup_page("Clinical")
-render_sidebar()
+import nav
+from clinical_cases import CASES, REFERENCE_COLOR
+from ui_kit import q, DB, cite_footer, references_box
 
 # ================================================================
 # BANNER — Clinical World identity
@@ -82,6 +81,41 @@ def _percent(new, base):
     return 100.0 * (new - base) / base if base else float("nan")
 
 
+def case_profile(case, variable, segment, solute=None):
+    """Profile of one variable for the case's scenario and its reference, labelled for charts."""
+    solute_clause = "AND solute=?" if solute else ""
+    params = [case["reference"], case["scenario"], variable, segment] + ([solute] if solute else [])
+    df = q(f"""
+        SELECT position, value, condition FROM {DB}
+        WHERE condition IN (?, ?)
+          AND variable=? AND segment=? AND compartment='Lumen' AND nephron='sup' {solute_clause}
+        ORDER BY condition, position
+    """, params)
+    df["condition"] = df["condition"].map({case["reference"]: "Normal", case["scenario"]: case["label"]})
+    return df
+
+
+def model_world_links(case_key):
+    """Clinical world -> model world: open the model pages with this case's context applied."""
+    case = CASES[case_key]
+    pair = [case["reference"], case["scenario"]]
+    focus = case["focus"]
+    st.markdown("---")
+    st.markdown("**Go deeper in the model world**")
+    st.caption(f"Each button opens the page with this case's scenarios (`{pair[0]}` vs `{pair[1]}`) and "
+               f"its focus ({focus['segment']} · {focus['solute']}) already selected. "
+               f"A link on that page brings you back here.")
+    b1, b2, b3 = st.columns(3)
+    if b1.button("Compare the two scenarios", key=f"case_{case_key}_cmp", width="stretch"):
+        nav.go("comparison", back_label=case["title"], compare=pair,
+               nephron="sup", compartment="Lumen", **focus)
+    if b2.button(f"Segment profile ({focus['segment']})", key=f"case_{case_key}_seg", width="stretch"):
+        nav.go("segment", back_label=case["title"], scenario=case["scenario"], nephron="sup", **focus)
+    if b3.button("Interactive anatomy", key=f"case_{case_key}_ana", width="stretch"):
+        nav.go("anatomy", back_label=case["title"], scenario=case["scenario"],
+               nephron="sup", compartment="Lumen", **focus)
+
+
 # ================================================================
 # CASE SELECTION (BUTTONS)
 # ================================================================
@@ -89,65 +123,35 @@ st.markdown("### Clinical Cases")
 st.caption("Pick a case — the model data opens up. Clinical content will be filled in once "
            "the source article is loaded.")
 
-if "clinical_case" not in st.session_state:
-    st.session_state.clinical_case = "SGLT2"
+case_key = nav.get("case")
+if case_key not in CASES:
+    case_key = next(iter(CASES))
+    nav.put(case=case_key)
 
-k1, k2, k3 = st.columns(3)
-
-with k1:
-    if st.button("SGLT2 Inhibition", width='stretch',
-                 type="primary" if st.session_state.clinical_case == "SGLT2" else "secondary"):
-        st.session_state.clinical_case = "SGLT2"
+for column, (key, spec) in zip(st.columns(len(CASES)), CASES.items()):
+    if column.button(spec["button"], key=f"case_pick_{key}", width="stretch",
+                     type="primary" if key == case_key else "secondary"):
+        nav.put(case=key)
         st.rerun()
 
-with k2:
-    if st.button("Diabetic Hyperfiltration", width='stretch',
-                 type="primary" if st.session_state.clinical_case == "Hyperfiltration" else "secondary"):
-        st.session_state.clinical_case = "Hyperfiltration"
-        st.rerun()
-
-with k3:
-    if st.button("Hypertension", width='stretch',
-                 type="primary" if st.session_state.clinical_case == "Hypertension" else "secondary"):
-        st.session_state.clinical_case = "Hypertension"
-        st.rerun()
-
-case = st.session_state.clinical_case
+case = CASES[case_key]
+colors = {"Normal": REFERENCE_COLOR, case["label"]: case["color"]}
 st.markdown("---")
 
 
 # ================================================================
 # CASE 1: SGLT2 Inhibition
 # ================================================================
-if case == "SGLT2":
-    st.markdown("### Case 1: SGLT2 Inhibition and TGF Restoration")
-    cmap1 = {"Normal": "#dc2626", "SGLT2 Inhibition": "#be185d"}
+if case_key == "SGLT2":
+    st.markdown(f"### {case['title']}")
 
     # --- Data queries ---
-    df_glu = q(f"""
-        SELECT position, value, condition FROM {DB}
-        WHERE condition IN ('F_normal', 'F_SGLT2')
-          AND variable='con' AND solute='glu' AND segment='PT' AND compartment='Lumen' AND nephron='sup'
-        ORDER BY condition, position
-    """)
-    df_glu["condition"] = df_glu["condition"].map({"F_normal": "Normal", "F_SGLT2": "SGLT2 Inhibition"})
-    df_na_con = q(f"""
-        SELECT position, value, condition FROM {DB}
-        WHERE condition IN ('F_normal', 'F_SGLT2')
-          AND variable='con' AND solute='Na' AND segment='cTAL' AND compartment='Lumen' AND nephron='sup'
-        ORDER BY condition, position
-    """)
-    df_na_con["condition"] = df_na_con["condition"].map({"F_normal": "Normal", "F_SGLT2": "SGLT2 Inhibition"})
-    df_na_flow = q(f"""
-        SELECT position, value, condition FROM {DB}
-        WHERE condition IN ('F_normal', 'F_SGLT2')
-          AND variable='flow' AND solute='Na' AND segment='cTAL' AND compartment='Lumen' AND nephron='sup'
-        ORDER BY condition, position
-    """)
-    df_na_flow["condition"] = df_na_flow["condition"].map({"F_normal": "Normal", "F_SGLT2": "SGLT2 Inhibition"})
-    con_n, con_s = _outlet(df_na_con, "Normal"), _outlet(df_na_con, "SGLT2 Inhibition")
-    flw_n, flw_s = _outlet(df_na_flow, "Normal"), _outlet(df_na_flow, "SGLT2 Inhibition")
-    glu_n, glu_s = _outlet(df_glu, "Normal"), _outlet(df_glu, "SGLT2 Inhibition")
+    df_glu = case_profile(case, "con", "PT", "glu")
+    df_na_con = case_profile(case, "con", "cTAL", "Na")
+    df_na_flow = case_profile(case, "flow", "cTAL", "Na")
+    con_n, con_s = _outlet(df_na_con, "Normal"), _outlet(df_na_con, case["label"])
+    flw_n, flw_s = _outlet(df_na_flow, "Normal"), _outlet(df_na_flow, case["label"])
+    glu_n, glu_s = _outlet(df_glu, "Normal"), _outlet(df_glu, case["label"])
 
     # --- Patient summary card ---
     with st.container(border=True):
@@ -178,7 +182,7 @@ if case == "SGLT2":
         st.plotly_chart(
             plot_case_metric(df_glu, "position", "value", "condition",
                              "PT Lumen Glucose Concentration (mM)",
-                             "Glucose (mM)", cmap1),
+                             "Glucose (mM)", colors),
             width='stretch',
         )
         st.markdown("#### 2. Sodium reaching the macula densa (cTAL outlet)")
@@ -187,13 +191,13 @@ if case == "SGLT2":
         with g1:
             st.plotly_chart(
                 plot_case_metric(df_na_con, "position", "value", "condition",
-                                 "cTAL Lumen Na+ Concentration", "Na+ (mM)", cmap1),
+                                 "cTAL Lumen Na+ Concentration", "Na+ (mM)", colors),
                 width='stretch',
             )
         with g2:
             st.plotly_chart(
                 plot_case_metric(df_na_flow, "position", "value", "condition",
-                                 "cTAL Lumen Na+ Flux", "Na+ flux (pmol/min)", cmap1),
+                                 "cTAL Lumen Na+ Flux", "Na+ flux (pmol/min)", colors),
                 width='stretch',
             )
         st.success(
@@ -201,42 +205,23 @@ if case == "SGLT2":
             f"(flux: {flw_n:,.0f} -> {flw_s:,.0f} pmol/min); concentration = {_percent(con_s, con_n):+.0f}% "
             f"({con_n:.0f} -> {con_s:.0f} mM)."
         )
-        st.markdown("---")
-        st.page_link("pages/4_Comparison.py",
-                      label="Inspect F_normal vs F_SGLT2 side by side on the Comparison page",
-                      icon=":material/search:")
+        model_world_links(case_key)
 
     with t_ref:
-        references_box(
-            ["hu2021"],
-            title="References — Case 1", open=True,
-        )
+        references_box(["hu2021"], title="References — Case 1", open=True)
         st.info("Additional references will be added once the source article is loaded.")
 
 
 # ================================================================
 # CASE 2: Diabetic Hyperfiltration
 # ================================================================
-elif case == "Hyperfiltration":
-    st.markdown("### Case 2: Diabetic Hyperfiltration")
-    cmap2 = {"Normal": "#dc2626", "Diabetes": "#ea580c"}
+elif case_key == "Hyperfiltration":
+    st.markdown(f"### {case['title']}")
 
-    df_flow_pt = q(f"""
-        SELECT position, value, condition FROM {DB}
-        WHERE condition IN ('F_normal', 'F_diab_mod')
-          AND variable='water_volume' AND segment='PT' AND compartment='Lumen' AND nephron='sup'
-        ORDER BY condition, position
-    """)
-    df_flow_pt["condition"] = df_flow_pt["condition"].map({"F_normal": "Normal", "F_diab_mod": "Diabetes"})
-    df_na_flow_pt = q(f"""
-        SELECT position, value, condition FROM {DB}
-        WHERE condition IN ('F_normal', 'F_diab_mod')
-          AND variable='flow' AND solute='Na' AND segment='PT' AND compartment='Lumen' AND nephron='sup'
-        ORDER BY condition, position
-    """)
-    df_na_flow_pt["condition"] = df_na_flow_pt["condition"].map({"F_normal": "Normal", "F_diab_mod": "Diabetes"})
-    qg_n, qg_d = _inlet(df_flow_pt, "Normal"), _inlet(df_flow_pt, "Diabetes")
-    reab_n, reab_d = _absorbed(df_na_flow_pt, "Normal"), _absorbed(df_na_flow_pt, "Diabetes")
+    df_flow_pt = case_profile(case, "water_volume", "PT")
+    df_na_flow_pt = case_profile(case, "flow", "PT", "Na")
+    qg_n, qg_d = _inlet(df_flow_pt, "Normal"), _inlet(df_flow_pt, case["label"])
+    reab_n, reab_d = _absorbed(df_na_flow_pt, "Normal"), _absorbed(df_na_flow_pt, case["label"])
 
     # --- Patient summary card ---
     with st.container(border=True):
@@ -265,7 +250,7 @@ elif case == "Hyperfiltration":
         st.plotly_chart(
             plot_case_metric(df_flow_pt, "position", "value", "condition",
                              "PT Water Volume Flow (nl/min)",
-                             "Volume (nl/min)", cmap2),
+                             "Volume (nl/min)", colors),
             width='stretch',
         )
         st.caption(f"PT inlet water flow in diabetes: {qg_n:.0f} -> {qg_d:.0f} nl/min "
@@ -276,50 +261,30 @@ elif case == "Hyperfiltration":
         st.plotly_chart(
             plot_case_metric(df_na_flow_pt, "position", "value", "condition",
                              "PT Lumen Na+ Flux (load)",
-                             "Na+ flux (pmol/min)", cmap2),
+                             "Na+ flux (pmol/min)", colors),
             width='stretch',
         )
         st.warning(
             f"**Mass:** Na+ reabsorbed in the PT Normal **{reab_n:,.0f}** -> Diabetes **{reab_d:,.0f} pmol/min** "
             f"({_percent(reab_d, reab_n):+.0f}%)."
         )
-        st.markdown("---")
-        st.page_link("pages/4_Comparison.py",
-                      label="Inspect F_normal vs F_diab_mod side by side on the Comparison page",
-                      icon=":material/search:")
+        model_world_links(case_key)
 
     with t_ref:
-        references_box(
-            ["hu2021"],
-            title="References — Case 2", open=True,
-        )
+        references_box(["hu2021"], title="References — Case 2", open=True)
         st.info("Additional references will be added once the source article is loaded.")
 
 
 # ================================================================
 # CASE 3: Hypertension
 # ================================================================
-elif case == "Hypertension":
-    st.markdown("### Case 3: Hypertension")
-    cmap3 = {"Normal": "#dc2626", "Hypertension": "#a16207"}
+elif case_key == "Hypertension":
+    st.markdown(f"### {case['title']}")
 
-    df_na_con_tal = q(f"""
-        SELECT position, value, condition FROM {DB}
-        WHERE condition IN ('F_normal', 'F_HT')
-          AND variable='con' AND solute='Na' AND segment='mTAL' AND compartment='Lumen' AND nephron='sup'
-        ORDER BY condition, position
-    """)
-    df_na_con_tal["condition"] = df_na_con_tal["condition"].map({"F_normal": "Normal", "F_HT": "Hypertension"})
-    df_na_flow_tal = q(f"""
-        SELECT position, value, condition FROM {DB}
-        WHERE condition IN ('F_normal', 'F_HT')
-          AND variable='flow' AND solute='Na' AND segment='mTAL' AND compartment='Lumen' AND nephron='sup'
-        ORDER BY condition, position
-    """)
-    df_na_flow_tal["condition"] = df_na_flow_tal["condition"].map({"F_normal": "Normal", "F_HT": "Hypertension"})
-    cin_n, cin_h = _inlet(df_na_con_tal, "Normal"), _inlet(df_na_con_tal, "Hypertension")
-    cout_n, cout_h = _outlet(df_na_con_tal, "Normal"), _outlet(df_na_con_tal, "Hypertension")
-    fout_n, fout_h = _outlet(df_na_flow_tal, "Normal"), _outlet(df_na_flow_tal, "Hypertension")
+    df_na_con_tal = case_profile(case, "con", "mTAL", "Na")
+    df_na_flow_tal = case_profile(case, "flow", "mTAL", "Na")
+    cout_n, cout_h = _outlet(df_na_con_tal, "Normal"), _outlet(df_na_con_tal, case["label"])
+    fout_n, fout_h = _outlet(df_na_flow_tal, "Normal"), _outlet(df_na_flow_tal, case["label"])
 
     # --- Patient summary card ---
     with st.container(border=True):
@@ -350,29 +315,23 @@ elif case == "Hypertension":
         with h1:
             st.plotly_chart(
                 plot_case_metric(df_na_con_tal, "position", "value", "condition",
-                                 "mTAL Lumen Na+ Concentration (mM)", "Na+ (mM)", cmap3),
+                                 "mTAL Lumen Na+ Concentration (mM)", "Na+ (mM)", colors),
                 width='stretch',
             )
         with h2:
             st.plotly_chart(
                 plot_case_metric(df_na_flow_tal, "position", "value", "condition",
-                                 "mTAL Lumen Na+ Flux (load)", "Na+ flux (pmol/min)", cmap3),
+                                 "mTAL Lumen Na+ Flux (load)", "Na+ flux (pmol/min)", colors),
                 width='stretch',
             )
         st.caption(
             f"Load at the mTAL outlet in hypertension: {fout_n:,.0f} -> {fout_h:,.0f} pmol/min "
             f"({_percent(fout_h, fout_n):+.0f}%)."
         )
-        st.markdown("---")
-        st.page_link("pages/4_Comparison.py",
-                      label="Inspect F_normal vs F_HT side by side on the Comparison page",
-                      icon=":material/search:")
+        model_world_links(case_key)
 
     with t_ref:
-        references_box(
-            ["hu2021"],
-            title="References — Case 3", open=True,
-        )
+        references_box(["hu2021"], title="References — Case 3", open=True)
         st.info("Additional references will be added once the source article is loaded.")
 
 cite_footer()

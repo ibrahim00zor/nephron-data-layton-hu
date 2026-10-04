@@ -1,15 +1,13 @@
-"""4_Comparison.py — Multi-scenario overlay.
+"""comparison.py — Multi-scenario overlay.
 Shows several scenarios on one chart and produces a difference table."""
-import pandas as pd
 import streamlit as st
 import plotly.express as px
+
+import nav
 from ui_kit import (
-    setup_page, render_sidebar, q, DB, cite_footer, neph_for,
+    q, DB, cite_footer, neph_for,
     options, scenario_list, SCENARIO_LABEL, NEPHRONS, valid_data, segment_broken,
 )
-
-setup_page("Comparison")
-active_scenario = render_sidebar()  # sidebar stays active, but this page spans all scenarios
 
 st.markdown("## Scenario Comparison")
 st.caption("Pick 2–4 scenarios overlaid and see them on one chart. "
@@ -17,27 +15,23 @@ st.caption("Pick 2–4 scenarios overlaid and see them on one chart. "
            "how mTAL changes in diabetes, which effect SGLT2 reverses, etc.")
 
 all_scenarios = scenario_list()
-
-# Top selectors
-c1, c2, c3 = st.columns(3)
-solute = c1.selectbox("Solute", ["Na", "K", "Cl", "urea", "glu", "HCO3", "NH3", "NH4"], index=0)
 segs, _ = options()
-segment = c2.selectbox("Segment", segs, index=segs.index("mTAL") if "mTAL" in segs else 0)
-compartment = c3.selectbox("Compartment", ["Lumen", "Cell", "Bath"], index=0)
 
-nephron_req = st.selectbox(
-    "Nephron type (auto 'merged' for CD segments)",
-    NEPHRONS,
-    index=NEPHRONS.index("sup"),
-)
+# Top selectors (bound to the shared selection)
+c1, c2, c3 = st.columns(3)
+solute = nav.select(c1, "Solute", ["Na", "K", "Cl", "urea", "glu", "HCO3", "NH3", "NH4"], "solute",
+                    fallback="Na")
+segment = nav.select(c2, "Segment", segs, "segment", fallback="PT")
+compartment = nav.select(c3, "Compartment", ["Lumen", "Cell", "Bath"], "compartment", fallback="Lumen")
+
+nephron_req = nav.select(st, "Nephron type (auto 'merged' for CD segments)", NEPHRONS, "nephron",
+                         fallback="sup")
 nephron = neph_for(segment, nephron_req)
 
 # Multi-scenario selection
-default = [s for s in ["F_normal", "F_diab_mod", "F_SGLT2"] if s in all_scenarios][:3]
-selected = st.multiselect(
-    "Scenarios to compare (2–4 recommended)",
-    all_scenarios,
-    default=default or all_scenarios[:2],
+selected = nav.multiselect(
+    st, "Scenarios to compare (2–4 recommended)", all_scenarios, "compare",
+    fallback=all_scenarios[:2],
     format_func=lambda s: SCENARIO_LABEL.get(s, s),
 )
 
@@ -66,8 +60,8 @@ if broken:
 df, _ = valid_data(df, "con")
 
 if df.empty:
-    st.warning(f"No valid data for the selected combination (e.g. LDL only in jux nephrons, "
-               f"or the selected scenarios did not converge in this segment).")
+    st.warning("No valid data for the selected combination (e.g. LDL only in jux nephrons, "
+               "or the selected scenarios did not converge in this segment).")
     st.stop()
 
 # Color palette — F red tones, M blue tones
@@ -107,8 +101,9 @@ summary = (df.groupby("condition")
 summary["change_%"] = ((summary["outlet"] - summary["inlet"]) / summary["inlet"] * 100).round(1)
 
 # Let the user pick the reference scenario
+present = [s for s in selected if s in summary.index]
 ref = st.selectbox("Reference scenario (differences are computed against it)",
-                   selected, format_func=lambda s: SCENARIO_LABEL.get(s, s))
+                   present, format_func=lambda s: SCENARIO_LABEL.get(s, s))
 if ref in summary.index:
     ref_outlet = summary.loc[ref, "outlet"]
     summary["vs_reference_%"] = ((summary["outlet"] - ref_outlet) / ref_outlet * 100).round(1)

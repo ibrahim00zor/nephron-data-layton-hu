@@ -1,9 +1,10 @@
 """
 ui_kit.py — Shared UI components.
 
-The home page and every file under pages/ imports this module. The consistent
-sidebar, query helpers, chart theme, and citation footer all come from here.
-Page files hold only their own logic — boilerplate lives here.
+app.py (the router) and every file under views/ import this module. The page frame
+(theme, CSS), the sidebar, query helpers, chart helper, and citation footer all come
+from here. Page files hold only their own logic — boilerplate lives here.
+Navigation and the shared selection context live in nav.py.
 """
 import os
 import duckdb
@@ -11,6 +12,11 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.io as pio
+
+import nav
+from clinical_cases import CASES, CASE_BY_SCENARIO
+
+APP_NAME = "Nephron Data (Layton/Hu)"
 
 # ============================================================
 #  Paths (relative to the project root)
@@ -36,7 +42,7 @@ SCENARIO_LABEL = {
     "M_SGLT2":    "♂ + SGLT2 inhibitor",
 }
 SCENARIO_DETAIL = {
-    "F_normal":   "Healthy adult female, normal hydration. **Reference for all comparisons.**",
+    "F_normal":   "Healthy adult female, normal hydration. <b>Reference for all comparisons.</b>",
     "M_normal":   "Healthy adult male. Reference for sex-difference analyses.",
     "F_diab_mod": "Moderate diabetes. Glucose load rises in the PT.",
     "F_HT":       "Hypertension. Tubular pressure and renal blood flow deviate from baseline.",
@@ -45,16 +51,10 @@ SCENARIO_DETAIL = {
 }
 
 # ============================================================
-#  Page setup (called by every page)
+#  Page frame (called once per run by app.py, before the page body)
 # ============================================================
-def setup_page(page_title, page_icon="◐"):
-    st.set_page_config(
-        page_title=f"{page_title} · Nephron Data (Layton/Hu)",
-        page_icon=page_icon,
-        layout="wide",
-        initial_sidebar_state="expanded",
-    )
-    # Plotly theme
+def apply_frame():
+    """Chart theme and global CSS shared by every page."""
     if "nephron" not in pio.templates:
         pio.templates["nephron"] = pio.templates["simple_white"]
         pio.templates["nephron"].layout.update(
@@ -70,7 +70,7 @@ def setup_page(page_title, page_icon="◐"):
     # Global CSS
     st.markdown("""
     <style>
-      .block-container { padding-top: 1.5rem; padding-bottom: 2rem; max-width: 1400px; }
+      .block-container { padding-top: 3.5rem; padding-bottom: 2rem; max-width: 1400px; }
       h1, h2, h3 { letter-spacing: -0.01em; }
       div[data-testid="stMetricValue"] { font-size: 1.35rem; }
       div[data-testid="stMetricLabel"] { font-size: 0.82rem; color: #4b5563; }
@@ -102,9 +102,11 @@ def neph_for(segment, requested):
 
 @st.cache_data
 def options():
+    """(segments, solutes) present in the data. Segments come in physiological (flow) order."""
     seg = q(f"SELECT DISTINCT segment FROM {DB}")["segment"].tolist()
     sol = q(f"SELECT DISTINCT solute FROM {DB} WHERE solute IS NOT NULL")["solute"].tolist()
-    return sorted(seg), sorted(sol)
+    ordered = [s for s in SEG_ORDER_JUX if s in seg] + sorted(s for s in seg if s not in SEG_ORDER_JUX)
+    return ordered, sorted(sol)
 
 @st.cache_data
 def health_metrics():
@@ -159,21 +161,18 @@ def segment_broken(scenario, segment):
     return segment in integrity_map().get(scenario, set())
 
 # ============================================================
-#  Sidebar (called by every page)
+#  Sidebar (rendered once per run by app.py, below the page menu)
 # ============================================================
 def render_sidebar():
     scenarios = scenario_list()
     with st.sidebar:
-        st.markdown("### Nephron Data (Layton/Hu)")
+        st.markdown(f"### {APP_NAME}")
         st.caption("Layton/Hu model — interactive data explorer")
 
-        scenario = st.selectbox(
-            "Active scenario",
-            scenarios,
+        scenario = nav.select(
+            st, "Active scenario", scenarios, "scenario", fallback="F_normal",
             format_func=lambda s: SCENARIO_LABEL.get(s, s),
-            index=scenarios.index("F_normal") if "F_normal" in scenarios else 0,
-            key="scenario_select_sidebar",
-            help="This page's charts/queries are filtered by the selected scenario.",
+            help="Charts and queries are filtered by this scenario. It stays selected as you change pages.",
         )
         detail = SCENARIO_DETAIL.get(scenario, "")
         if detail:
@@ -184,6 +183,13 @@ def render_sidebar():
             )
         st.caption(f"Code: `{scenario}` · {len(scenarios)}-scenario library")
 
+        # Model world -> clinical world: the case (if any) that is built on this scenario
+        case_key = CASE_BY_SCENARIO.get(scenario)
+        if case_key and st.button(f"Clinical case: {CASES[case_key]['button']} →",
+                                  key="_sidebar_case", width="stretch",
+                                  help="Open the clinical case that uses this scenario."):
+            nav.go("clinical", case=case_key)
+
         broken = integrity_map()
         if scenario in broken:
             segs = ", ".join(sorted(broken[scenario]))
@@ -192,6 +198,14 @@ def render_sidebar():
                 f"converge numerically (collecting duct). Their data is invalid and is "
                 f"hidden in the charts. Proximal–DCT is reliable. Details: Data Integrity."
             )
+
+        # The selection that travels with the user across pages
+        st.markdown("---")
+        st.caption(f"**Selection** (kept across pages)  \n{nav.selection_summary()}")
+        if not nav.is_default_selection():
+            if st.button("Reset selection", key="_sidebar_reset", width="stretch"):
+                nav.reset_selection()
+                st.rerun()
 
         st.markdown("---")
         sb = health_metrics()

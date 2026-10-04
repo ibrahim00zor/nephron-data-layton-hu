@@ -1,14 +1,15 @@
-"""1_Segment_Profile.py — Single segment, single solute profile."""
+"""segment_profile.py — Single segment, single solute profile."""
 import streamlit as st
+
+import nav
 from ui_kit import (
-    setup_page, render_sidebar, q, DB, make_chart, cite_footer, neph_for,
+    q, DB, make_chart, cite_footer, neph_for,
     options, NEPHRONS, valid_data, segment_broken,
 )
 from education import segment_info, cite_short
 from interpretation import interpret
 
-setup_page("Segment Profile")
-scenario = render_sidebar()
+scenario = nav.get("scenario")
 
 st.markdown("## Segment Profile")
 st.caption("How a single solute changes along one segment. Lumen + Bath can be overlaid; "
@@ -17,9 +18,9 @@ st.caption("How a single solute changes along one segment. Lumen + Bath can be o
 segs, solutes = options()
 
 c1, c2, c3, c4 = st.columns([1, 1, 1, 1.2])
-solute      = c1.selectbox("Solute",  solutes, index=solutes.index("Na"))
-segment     = c2.selectbox("Segment", segs)
-nephron_req = c3.selectbox("Nephron", NEPHRONS)
+solute      = nav.select(c1, "Solute", solutes, "solute", fallback="Na")
+segment     = nav.select(c2, "Segment", segs, "segment", fallback="PT")
+nephron_req = nav.select(c3, "Nephron", NEPHRONS, "nephron", fallback="sup")
 show_bath   = c4.checkbox("Overlay Bath", value=True)
 nephron     = neph_for(segment, nephron_req)
 
@@ -35,7 +36,6 @@ df = q(
     [scenario, solute, segment, nephron, *comps],
 )
 
-df_raw = df
 seg_broken = segment_broken(scenario, segment)
 dropped = 0
 if seg_broken:
@@ -60,7 +60,7 @@ else:
         g, c = lumen["value"].iloc[0], lumen["value"].iloc[-1]
         m1, m2, m3 = st.columns(3)
         m1.metric(f"{solute} inlet", f"{g:.2f} mM")
-        m2.metric(f"{solute} outlet", f"{c:.2f} mM", f"{(c-g)/g*100:+.1f} %")
+        m2.metric(f"{solute} outlet", f"{c:.2f} mM", f"{(c-g)/g*100:+.1f} %" if g else None)
         m3.metric("Points", f"{len(lumen)}")
 
     fig = make_chart(df, "position", "value", "compartment",

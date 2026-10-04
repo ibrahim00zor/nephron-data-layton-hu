@@ -1,10 +1,8 @@
-"""6_Data_Integrity.py — Database inventory + known limits."""
+"""data_integrity.py — Database inventory + known limits."""
 import os
 import streamlit as st
-from ui_kit import setup_page, render_sidebar, q, DB, PARQUET
 
-setup_page("Data Integrity")
-scenario = render_sidebar()
+from ui_kit import q, DB, PARQUET
 
 st.markdown("## Data Integrity Panel")
 st.caption(f"Source: `{os.path.basename(PARQUET)}` · "

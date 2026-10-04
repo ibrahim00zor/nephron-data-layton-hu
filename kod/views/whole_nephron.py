@@ -1,13 +1,14 @@
-"""2_Whole_Nephron.py — Chained whole-nephron chart from PT->IMCD."""
+"""whole_nephron.py — Chained whole-nephron chart from PT -> IMCD."""
 import pandas as pd
 import streamlit as st
+
+import nav
 from ui_kit import (
-    setup_page, render_sidebar, q, DB, make_chart, cite_footer, neph_for,
+    q, DB, make_chart, cite_footer, neph_for,
     options, SEG_ORDER_SUP, SEG_ORDER_JUX, valid_data, segment_broken,
 )
 
-setup_page("Whole Nephron")
-scenario = render_sidebar()
+scenario = nav.get("scenario")
 
 st.markdown("## Along the Whole Nephron")
 st.caption("Segments are drawn side by side in physiological order. Vertical dotted lines are segment "
@@ -16,9 +17,10 @@ st.caption("Segments are drawn side by side in physiological order. Vertical dot
 segs, solutes = options()
 
 c1, c2, c3 = st.columns(3)
-solute = c1.selectbox("Solute", solutes, index=solutes.index("Na"))
-compartment = c2.selectbox("Compartment", ["Lumen", "Cell", "Bath"])
-nephron = c3.selectbox("Nephron type", ["sup", "jux1", "jux2", "jux3", "jux4", "jux5"])
+solute = nav.select(c1, "Solute", solutes, "solute", fallback="Na")
+compartment = nav.select(c2, "Compartment", ["Lumen", "Cell", "Bath"], "compartment", fallback="Lumen")
+nephron = nav.select(c3, "Nephron type", ["sup", "jux1", "jux2", "jux3", "jux4", "jux5"], "nephron",
+                     fallback="sup")
 
 order = SEG_ORDER_JUX if nephron.startswith("jux") else SEG_ORDER_SUP
 parts = []

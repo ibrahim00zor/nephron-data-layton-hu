@@ -22,10 +22,25 @@ diabetes, hypertension, and SGLT2 inhibitor (female and male). It traces the con
 profile along each nephron segment, separates mass and volume changes, checks physiology
 automatically, and provides an educational clinical layer.
 
-**Pages**
+**Pages** — the menu is organised in two worlds, plus data & quality
 
-| Page | Purpose |
-|---|---|
+| World | Page | Purpose |
+|---|---|---|
+| Model | Segment Profile | One solute in one segment; Lumen+Bath overlay; automatic mass/volume interpretation |
+| Model | Whole Nephron | Chained profile from PT → IMCD |
+| Model | Nephron Types | Superficial vs juxtamedullary (jux1–5): the effect of depth |
+| Model | Comparison | Several scenarios overlaid, with a difference table |
+| Model | Interactive Anatomy (BETA) | D3.js anatomic diagram: color by concentration/load, thickness by flow |
+| Clinical | Clinical Cases | Educational case interface built on the same scenarios — *not medical advice* |
+| Data & quality | Validation | Automatic physiology checks |
+| Data & quality | Data Integrity | Database inventory, convergence status, known limits |
+
+**Linked exploration.** The selection (scenario, solute, segment, nephron type, compartment)
+travels with you from page to page, so one question can be followed across views. A clinical
+case opens the model pages with its scenarios and focus preselected and offers a way back;
+a scenario links to the clinical case built on it.
+
+---|---|
 | Segment Profile | One solute in one segment; Lumen+Bath overlay; automatic mass/volume interpretation |
 | Whole Nephron | Chained flow chart from PT → IMCD |
 | Nephron Types | Superficial vs juxtamedullary (jux1–5): the effect of depth |
@@ -45,6 +60,12 @@ streamlit run kod/app.py
 ```
 
 The app reads a single tidy Parquet file (`veri/nephron_veritabani.parquet`, 6 scenarios).
+
+Run the tests (page rendering, shared selection, contextual navigation):
+
+```bash
+python tests/test_app.py
+```
 
 ---
 
@@ -70,16 +91,20 @@ that model's output; it does not re-implement the model.
 ├── requirements.txt
 ├── veri/
 │   └── nephron_veritabani.parquet   # 6 scenarios, one tidy table
-└── kod/
-    ├── app.py             # home (Streamlit landing)
-    ├── ui_kit.py          # shared: sidebar, query, chart, citation footer
-    ├── education.py       # educational content (segment/transporter/solute)
-    ├── interpretation.py  # automatic mass/volume interpretation
-    ├── build_database.py  # raw txt -> tidy Parquet (multi-scenario)
-    ├── run_scenarios.py   # scenario generator (resumable)
-    ├── veri_kontrol.py    # data-integrity checker (convergence)
-    ├── pages/             # the 8 pages above
-    └── d3_components/     # nephron_diagram.html (D3.js anatomic template)
+├── kod/
+│   ├── app.py             # entry point / router: menu, frame, sidebar, then the page
+│   ├── nav.py             # page registry, shared selection context, contextual jumps
+│   ├── ui_kit.py          # shared: frame, sidebar, queries, chart helper, citation footer
+│   ├── clinical_cases.py  # which scenario/focus each clinical case is built on
+│   ├── education.py       # educational content (segment/transporter/solute)
+│   ├── interpretation.py  # automatic mass/volume interpretation
+│   ├── views/             # one file per page (home, segment_profile, whole_nephron, ...)
+│   ├── d3_components/     # nephron_diagram.html (D3.js anatomic template)
+│   ├── build_database.py  # raw txt -> tidy Parquet (multi-scenario)
+│   ├── run_scenarios.py   # scenario generator (resumable)
+│   └── veri_kontrol.py    # data-integrity checker (convergence)
+└── tests/
+    └── test_app.py        # smoke + navigation tests (Streamlit AppTest)
 ```
 
 ---
