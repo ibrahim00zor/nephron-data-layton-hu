@@ -32,6 +32,7 @@ PAGES = {
     "nephron":    {"path": "views/whole_nephron.py",   "title": "Whole Nephron",              "section": MODEL},
     "types":      {"path": "views/nephron_types.py",   "title": "Nephron Types",              "section": MODEL},
     "comparison": {"path": "views/comparison.py",      "title": "Comparison",                 "section": MODEL},
+    "transporters": {"path": "views/transporters.py",  "title": "Transporters",               "section": MODEL},
     "anatomy":    {"path": "views/anatomy.py",         "title": "Interactive Anatomy (BETA)", "section": MODEL},
     "clinical":   {"path": "views/clinical.py",        "title": "Clinical Cases",             "section": CLINICAL},
     "validation": {"path": "views/validation.py",      "title": "Validation",                 "section": QUALITY},

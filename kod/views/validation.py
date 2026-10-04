@@ -11,6 +11,7 @@ Two kinds of checks are kept apart:
 import streamlit as st
 
 import nav
+import transport
 from ui_kit import DB, scalar, SCENARIO_LABEL, segment_broken
 
 scenario = nav.get("scenario")
@@ -94,6 +95,16 @@ b = value(f"SELECT value FROM {DB} WHERE variable='con' AND solute='Na' AND segm
 if a and b and a != 0:
     outputs.append(("Segment chaining (mTAL → cTAL)", f"{a:.1f} = {b:.1f}",
                     "diff < 2%", abs(a-b)/a < 0.02))
+
+# Fluxes consistent with flows: the Na+ leaving the lumen across the epithelium (apical +
+# paracellular flux, integrated over the luminal surface) must equal the drop in luminal flow.
+balance = transport.mass_balance(scenario, "PT", "sup", "Na")
+if balance:
+    from_fluxes, flow_drop = balance
+    if flow_drop:
+        outputs.append(("Na⁺ mass balance (PT): fluxes vs flow",
+                        f"{from_fluxes:,.0f} vs {flow_drop:,.0f} pmol/min",
+                        "diff < 1%", abs(from_fluxes - flow_drop) / abs(flow_drop) < 0.01))
 
 # ------------------------------------------------------------
 #  Prescribed inputs (boundary conditions)

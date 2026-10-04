@@ -71,9 +71,13 @@ st.markdown("""
   the model, not a project error. The model's solver could be softened in the future.</span>
 </div>
 <div style="border:1px solid #bfdbfe;background:#eff6ff;padding:12px 14px;border-radius:6px;margin-bottom:10px;">
-  <b style="color:#1e40af;">Unit uncertainties</b><br>
-  <span style="color:#374151;">Units for pressure / diameter / length were not confirmed from the
-  source. Other units are from the README.</span>
+  <b style="color:#1e40af;">Units: what is confirmed and what is not</b><br>
+  <span style="color:#374151;"><b>Transporter fluxes</b> (<code>variable='flux'</code>) are labelled
+  "pmol/min" in the dataset, but the model writes them in its internal units. They are flux densities:
+  1 model unit = 600 pmol/(min·cm²) of luminal surface. <b>Diameter and length</b> are in cm. Both
+  are confirmed by mass balance — integrating apical + paracellular flux over the luminal surface
+  reproduces the drop in luminal flow (see the Transporters page). The unit of <b>pressure</b> has
+  not been confirmed from the source.</span>
 </div>
 <div style="border:1px solid #bfdbfe;background:#eff6ff;padding:12px 14px;border-radius:6px;">
   <b style="color:#1e40af;">The interstitial gradient is prescribed (~734 mOsm at the papilla)</b><br>

@@ -50,6 +50,17 @@ SCENARIO_DETAIL = {
     "M_SGLT2":    "Gliflozin, male. Sex × drug comparison against F_SGLT2.",
 }
 
+# One colour per scenario, shared by every chart that overlays scenarios
+# (female scenarios in red tones, male scenarios in blue tones).
+SCENARIO_COLOR = {
+    "F_normal":   "#dc2626",
+    "F_diab_mod": "#ea580c",
+    "F_HT":       "#a16207",
+    "F_SGLT2":    "#be185d",
+    "M_normal":   "#1e40af",
+    "M_SGLT2":    "#0891b2",
+}
+
 # ============================================================
 #  Page frame (called once per run by app.py, before the page body)
 # ============================================================
@@ -230,8 +241,9 @@ def render_sidebar():
             )
         with st.expander("Units"):
             st.markdown(
-                "Concentration: **mM** · Flux: **pmol/min** · Volume: **nl/min** · "
-                "Osmolality: **mOsm** · Potential: **mV**"
+                "Concentration: **mM** · Solute flow: **pmol/min** · Volume: **nl/min** · "
+                "Osmolality: **mOsm** · Potential: **mV** · "
+                "Transporter flux: **pmol/(min·cm²)**"
             )
     return scenario
 

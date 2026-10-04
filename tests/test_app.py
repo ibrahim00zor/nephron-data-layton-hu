@@ -195,7 +195,7 @@ def test_validation_scores_outputs_only():
     """Prescribed inputs are shown but never scored; non-converged segments are not 'failures'."""
     at = new_app("validation")
     metrics = {m.label: m.value for m in at.metric}
-    assert metrics["Output checks passed"] == "7 / 7", metrics
+    assert metrics["Output checks passed"] == "8 / 8", metrics
     text = " ".join(m.value for m in at.main.markdown)
     assert "Prescribed inputs" in text and "Corticomedullary gradient (interstitium)" in text
 
@@ -203,7 +203,7 @@ def test_validation_scores_outputs_only():
     for scenario in ("M_normal", "F_diab_mod"):
         at = new_app("validation", scenario=scenario)
         metrics = {m.label: m.value for m in at.metric}
-        assert metrics["Output checks passed"] == "6 / 6", (scenario, metrics)
+        assert metrics["Output checks passed"] == "7 / 7", (scenario, metrics)
         text = " ".join(m.value for m in at.main.markdown)
         assert "IMCD did not converge" in text and "nan mOsm" not in text and "-1129" not in text
 

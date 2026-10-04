@@ -30,6 +30,7 @@ automatically, and provides an educational clinical layer.
 | Model | Whole Nephron | Chained profile from PT → IMCD |
 | Model | Nephron Types | Superficial vs juxtamedullary (jux1–5): the effect of depth |
 | Model | Comparison | Several scenarios overlaid, with a difference table |
+| Model | Transporters | Membrane fluxes per pathway and per transporter (NHE3, SGLT2, NKCC2, NCC, ENaC, Na/K-ATPase, …), with a mass-balance check |
 | Model | Interactive Anatomy (BETA) | D3.js anatomic diagram: color by concentration/load, thickness by flow |
 | Clinical | Clinical Cases | Educational case interface built on the same scenarios — *not medical advice* |
 | Data & quality | Validation | Automatic physiology checks |
@@ -64,7 +65,7 @@ The app reads a single tidy Parquet file (`veri/nephron_veritabani.parquet`, 6 s
 Run the tests (page rendering, shared selection, contextual navigation):
 
 ```bash
-python tests/test_app.py
+python tests/run_all.py
 ```
 
 ---
@@ -84,7 +85,9 @@ that model's output; it does not re-implement the model.
   in a Patient with Diabetes.* Int J Mol Sci 22(11):5819. https://doi.org/10.3390/ijms22115819
 - **Model code:** [`mstadt/nephron`](https://github.com/mstadt/nephron)
 
-**Units:** concentration mM · flux pmol/min · volume nl/min · osmolality mOsm · potential mV
+**Units:** concentration mM · solute flow pmol/min · volume nl/min · osmolality mOsm · potential mV ·
+transporter flux density pmol/(min·cm²) (1 model unit = 600; verified by mass balance, see
+`kod/transport.py`)
 
 ---
 
@@ -102,6 +105,7 @@ that model's output; it does not re-implement the model.
 │   ├── nav.py             # page registry, shared selection context, contextual jumps
 │   ├── ui_kit.py          # shared: frame, sidebar, queries, chart helper, citation footer
 │   ├── clinical_cases.py  # which scenario/focus each clinical case is built on
+│   ├── transport.py       # transporter fluxes: verified units, membranes, mass balance
 │   ├── education.py       # educational content (segment/transporter/solute)
 │   ├── interpretation.py  # automatic mass/volume interpretation
 │   ├── views/             # one file per page (home, segment_profile, whole_nephron, ...)

@@ -6,7 +6,7 @@ import plotly.express as px
 import nav
 from ui_kit import (
     q, DB, cite_footer, neph_for,
-    options, scenario_list, SCENARIO_LABEL, NEPHRONS, valid_data, segment_broken,
+    options, scenario_list, SCENARIO_COLOR, SCENARIO_LABEL, NEPHRONS, valid_data, segment_broken,
 )
 
 st.markdown("## Scenario Comparison")
@@ -64,22 +64,12 @@ if df.empty:
                "or the selected scenarios did not converge in this segment).")
     st.stop()
 
-# Color palette — F red tones, M blue tones
-COLOR_MAP = {
-    "F_normal":   "#dc2626",
-    "F_diab_mod": "#ea580c",
-    "F_HT":       "#a16207",
-    "F_SGLT2":    "#be185d",
-    "M_normal":   "#1e40af",
-    "M_SGLT2":    "#0891b2",
-}
-
 fig = px.line(
     df, x="position", y="value", color="condition",
     title=f"{segment} — {solute} ({compartment}, {nephron})",
     labels={"position": "Position (0 = inlet, 1 = outlet)",
             "value": f"{solute} (mM)", "condition": "Scenario"},
-    color_discrete_map=COLOR_MAP,
+    color_discrete_map=SCENARIO_COLOR,
 )
 fig.update_layout(hovermode="x unified", height=500,
                   legend=dict(title_text="Scenario"))

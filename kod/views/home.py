@@ -154,6 +154,7 @@ st.markdown(f"""
      **Whole Nephron** (chained profile from PT → IMCD) ·
      **Nephron Types** (superficial vs juxtamedullary) ·
      **Comparison** (several scenarios overlaid) ·
+     **Transporters** (membrane fluxes per pathway and transporter) ·
      **Interactive Anatomy** (the nephron as a diagram).
    - **{nav.CLINICAL}** — **Clinical Cases**: educational cases built on the same scenarios.
    - **{nav.QUALITY}** — **Validation** (automatic physiology checks) and **Data Integrity** (inventory, known limits).

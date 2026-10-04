@@ -105,7 +105,12 @@ def model_world_links(case_key):
     st.caption(f"Each button opens the page with this case's scenarios (`{pair[0]}` vs `{pair[1]}`) and "
                f"its focus ({focus['segment']} · {focus['solute']}) already selected. "
                f"A link on that page brings you back here.")
-    b1, b2, b3 = st.columns(3)
+    with_transporters = "transporters" in nav.PAGES
+    b1, b2, b3, *rest = st.columns(4 if with_transporters else 3)
+    if with_transporters and rest[0].button(f"Transporters ({focus['segment']})",
+                                            key=f"case_{case_key}_trn", width="stretch"):
+        nav.go("transporters", back_label=case["title"], scenario=case["scenario"], compare=pair,
+               nephron="sup", **focus)
     if b1.button("Compare the two scenarios", key=f"case_{case_key}_cmp", width="stretch"):
         nav.go("comparison", back_label=case["title"], compare=pair,
                nephron="sup", compartment="Lumen", **focus)
