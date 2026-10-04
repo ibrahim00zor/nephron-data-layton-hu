@@ -10,6 +10,7 @@ Run with:  streamlit run kod/app.py
 import streamlit as st
 
 import nav
+import style
 from ui_kit import APP_NAME, apply_frame, render_sidebar
 
 # Menu: pages grouped into the two worlds (model / clinical) plus data & quality.
@@ -36,6 +37,8 @@ st.set_page_config(
 apply_frame()
 render_sidebar()
 nav.render_origin()
+if nav.PAGES[current]["section"]:
+    style.kicker(nav.PAGES[current]["section"])     # which of the worlds this page belongs to
 
 selected.run()
 

@@ -11,15 +11,16 @@ Two kinds of checks are kept apart:
 import streamlit as st
 
 import nav
+import style
 import transport
 from ui_kit import DB, scalar, SCENARIO_LABEL, segment_broken
 
 scenario = nav.get("scenario")
 
-st.markdown("## Automatic Physiology Validation")
-st.caption(f"Active scenario: **{SCENARIO_LABEL.get(scenario, scenario)}**. "
-           f"Some checks may give a different result in a disease/drug scenario — "
-           f"that is **information**, not an error.")
+st.markdown("## Validation")
+st.caption(f"Does the model's output behave as physiology expects? Checked for "
+           f"{SCENARIO_LABEL.get(scenario, scenario)}. In a disease or drug scenario a check may "
+           f"come out differently; that is information about the scenario, not an error.")
 
 outputs = []   # (name, value, target, ok)  — what the model computes; ok=None -> not available
 inputs = []    # (name, value, expected, ok) — what the model is given
@@ -139,44 +140,27 @@ if unavailable:
     st.caption(f"{unavailable} check(s) not available for this scenario and left out of the score.")
 
 
-def card(name, shown, target, ok, scored=True):
-    if ok is None:   # depends on a segment that did not converge
-        icon, color, scored = "n/a", "#9ca3af", False
-    elif scored:
-        icon, color = ("✓", "#059669") if ok else ("✗", "#dc2626")
-    else:   # inputs are reported, not judged as model performance
-        icon, color = ("as specified" if ok else "check", "#6b7280")
-    st.markdown(f"""
-    <div style="border:1px solid #e5e7eb;border-left:4px solid {color};
-                padding:10px 14px;border-radius:6px;margin-bottom:10px;background:white;">
-      <div style="display:flex;justify-content:space-between;align-items:start;">
-        <div style="font-weight:600;color:#111827;">{name}</div>
-        <div style="color:{color};font-weight:700;font-size:{'1.1rem' if scored else '0.78rem'};">{icon}</div>
-      </div>
-      <div style="margin-top:4px;color:#374151;font-family:ui-monospace,monospace;">{shown}</div>
-      <div style="margin-top:2px;color:#6b7280;font-size:0.8rem;">{target}</div>
-    </div>
-    """, unsafe_allow_html=True)
+def row(name, shown, target, ok, scored=True):
+    """One line of the ledger: what was checked, what was found, what was expected, the verdict."""
+    if ok is None:          # depends on a segment that did not converge
+        return (name, shown, target, "n/a", "quiet")
+    if not scored:          # inputs are reported, not judged as model performance
+        return (name, shown, target, "as specified" if ok else "check", "quiet")
+    return (name, shown, target, "✓ pass" if ok else "✗ differs", "pass" if ok else "fail")
 
 
-st.markdown("---")
-st.markdown("#### Model outputs")
+st.markdown("### Model outputs")
 st.caption("Quantities the model computes. These are the checks that count.")
-cols = st.columns(2)
-for i, (name, shown, target, ok) in enumerate(outputs):
-    with cols[i % 2]:
-        card(name, shown, target, ok)
+style.ledger([row(*check) for check in outputs])
 
-st.markdown("#### Prescribed inputs")
+st.markdown("### Prescribed inputs")
 st.caption(
-    "Quantities the model is **given**, not ones it computes. The interstitial fluid composition "
+    "Quantities the model is given, not ones it computes. The interstitial fluid composition "
     "is specified at the cortex, the outer–inner medullary boundary and the papillary tip and "
     "interpolated linearly in between (Layton & Layton 2019, Methods and Table 2); in this "
     "dataset it is identical in all six scenarios. The composition of the fluid entering the "
-    "proximal tubule is likewise an inlet condition. Shown to confirm the data is as specified — "
-    "**not counted**, because they say nothing about how well the model reproduces physiology."
+    "proximal tubule is likewise an inlet condition. They are shown to confirm the data is as "
+    "specified and are not counted, because they say nothing about how well the model reproduces "
+    "physiology."
 )
-cols = st.columns(2)
-for i, (name, shown, target, ok) in enumerate(inputs):
-    with cols[i % 2]:
-        card(name, shown, target, ok, scored=False)
+style.ledger([row(*check, scored=False) for check in inputs])

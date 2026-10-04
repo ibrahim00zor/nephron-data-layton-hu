@@ -17,9 +17,9 @@ from ui_kit import (
 scenario = nav.get("scenario")
 
 st.markdown("## Transporters")
-st.caption("The membrane fluxes the model computes in each segment: the pathway totals for Na⁺ and K⁺ "
-           "(apical entry, paracellular) and the flux through each transporter. "
-           "This is model output shown as it is — no interpretation is added.")
+st.caption("What crosses the epithelium in each segment, as the model computes it: the totals for "
+           "Na⁺ and K⁺ across the apical membrane and through the tight junction, and the flux through "
+           "each transporter. This is model output shown as it is; nothing is interpreted.")
 
 # ------------------------------------------------------------
 #  Selection (bound to the shared context)
@@ -70,7 +70,7 @@ with tab_one:
         else:
             fig = make_chart(df, "position", "density", "pathway",
                              f"{segment} — {solute} fluxes ({nephron}) · {SCENARIO_LABEL.get(scenario, scenario)}",
-                             x_label, y_label, color_label="Pathway", height=480)
+                             x_label, y_label, color_label="Pathway", height=520, legend_below=True)
             fig.add_hline(y=0, line_dash="dot", opacity=0.35)
             st.plotly_chart(fig, width='stretch')
 

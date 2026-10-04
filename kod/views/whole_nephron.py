@@ -10,9 +10,10 @@ from ui_kit import (
 
 scenario = nav.get("scenario")
 
-st.markdown("## Along the Whole Nephron")
-st.caption("Segments are drawn side by side in physiological order. Vertical dotted lines are segment "
-           "boundaries. The collecting duct (CCD/OMCD/IMCD) is under the automatic 'merged' nephron.")
+st.markdown("## Whole Nephron")
+st.caption("One solute followed from the proximal tubule to the papilla, the segments set end to end in "
+           "the order the fluid meets them. Dotted lines are segment boundaries; the collecting duct "
+           "(CCD, OMCD, IMCD) is shared by all nephrons and is drawn from the merged nephron.")
 
 segs, solutes = options()
 

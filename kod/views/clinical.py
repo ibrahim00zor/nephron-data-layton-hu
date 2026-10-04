@@ -15,41 +15,24 @@ import streamlit as st
 import plotly.express as px
 
 import nav
+import style
 from clinical_cases import CASES, REFERENCE_COLOR
 from ui_kit import q, DB, cite_footer, references_box
 
 # ================================================================
-# BANNER — Clinical World identity
+# HEADING
 # ================================================================
+st.markdown("## Clinical Cases")
 st.markdown(
-    """<div style="
-        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
-        color: white;
-        padding: 24px 28px;
-        border-radius: 10px;
-        margin-bottom: 16px;
-    ">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 700; letter-spacing: 0.02em;">
-                    Clinical Education Interface
-                </div>
-                <div style="font-size: 0.88rem; opacity: 0.85; margin-top: 4px;">
-                    Example cases and model data — under one roof
-                </div>
-            </div>
-            <div style="font-size: 0.78rem; opacity: 0.7; text-align: right;">
-                Educational — not medical advice
-            </div>
-        </div>
-    </div>""",
+    "<p class='nd-lede' style='font-size:1.08rem;'>Three teaching cases, each built on one of the model's "
+    "scenarios. The clinical text is still to be written and will come only from a verified source; "
+    "what is here now is the structure and the model data behind each case.</p>",
     unsafe_allow_html=True,
 )
-
 st.warning(
-    "**Educational — not medical advice.** The charts here are the output of a mathematical "
-    "model (Hu et al. 2021); they are not real patient data. They cannot be used for diagnosis, "
-    "treatment, or patient-care decisions."
+    "**For teaching only — not medical advice.** The charts are the output of a mathematical model "
+    "(Hu et al. 2021), not patient data. They cannot be used for diagnosis, treatment, or any "
+    "decision about a patient."
 )
 
 # ================================================================
@@ -58,10 +41,11 @@ st.warning(
 
 def plot_case_metric(df, x_col, y_col, color_col, title, y_title, colors):
     fig = px.line(df, x=x_col, y=y_col, color=color_col, title=title,
-                  color_discrete_map=colors)
-    fig.update_layout(hovermode="x unified", height=350,
-                      margin=dict(l=10, r=10, t=40, b=10))
-    fig.update_traces(line=dict(width=3))
+                  color_discrete_map=colors,
+                  labels={x_col: "Position along the segment (0 = inlet, 1 = outlet)", y_col: y_title,
+                          color_col: ""})
+    fig.update_layout(hovermode="x unified", height=350, legend=dict(title_text=""))
+    fig.update_traces(line=dict(width=2))
     return fig
 
 
@@ -101,22 +85,21 @@ def model_world_links(case_key):
     pair = [case["reference"], case["scenario"]]
     focus = case["focus"]
     st.markdown("---")
-    st.markdown("**Go deeper in the model world**")
-    st.caption(f"Each button opens the page with this case's scenarios (`{pair[0]}` vs `{pair[1]}`) and "
-               f"its focus ({focus['segment']} · {focus['solute']}) already selected. "
-               f"A link on that page brings you back here.")
+    st.markdown("<div class='nd-label'>Continue in the model world</div>", unsafe_allow_html=True)
+    st.caption(f"Each opens with this case's scenarios (`{pair[0]}` and `{pair[1]}`) and its focus "
+               f"({focus['segment']}, {focus['solute']}) already selected, and offers a way back here.")
     with_transporters = "transporters" in nav.PAGES
     b1, b2, b3, *rest = st.columns(4 if with_transporters else 3)
     if with_transporters and rest[0].button(f"Transporters ({focus['segment']})",
                                             key=f"case_{case_key}_trn", width="stretch"):
         nav.go("transporters", back_label=case["title"], scenario=case["scenario"], compare=pair,
                nephron="sup", **focus)
-    if b1.button("Compare the two scenarios", key=f"case_{case_key}_cmp", width="stretch"):
+    if b1.button("Comparison", key=f"case_{case_key}_cmp", width="stretch"):
         nav.go("comparison", back_label=case["title"], compare=pair,
                nephron="sup", compartment="Lumen", **focus)
     if b2.button(f"Segment profile ({focus['segment']})", key=f"case_{case_key}_seg", width="stretch"):
         nav.go("segment", back_label=case["title"], scenario=case["scenario"], nephron="sup", **focus)
-    if b3.button("Interactive anatomy", key=f"case_{case_key}_ana", width="stretch"):
+    if b3.button("Anatomy", key=f"case_{case_key}_ana", width="stretch"):
         nav.go("anatomy", back_label=case["title"], scenario=case["scenario"],
                nephron="sup", compartment="Lumen", **focus)
 
@@ -124,9 +107,7 @@ def model_world_links(case_key):
 # ================================================================
 # CASE SELECTION (BUTTONS)
 # ================================================================
-st.markdown("### Clinical Cases")
-st.caption("Pick a case — the model data opens up. Clinical content will be filled in once "
-           "the source article is loaded.")
+st.markdown("<div class='nd-label' style='margin-top:0.6rem;'>Choose a case</div>", unsafe_allow_html=True)
 
 case_key = nav.get("case")
 if case_key not in CASES:
@@ -160,8 +141,8 @@ if case_key == "SGLT2":
 
     # --- Patient summary card ---
     with st.container(border=True):
-        st.markdown("##### Patient Summary")
-        st.info("The patient profile and clinical context will be filled in once the source article is loaded.")
+        st.markdown("##### Patient summary")
+        style.pending("Not written yet. The patient profile and clinical context wait for the source article.")
         k1, k2, k3 = st.columns(3)
         k1.metric("Na load to macula densa", f"{flw_s:,.0f} pmol/min",
                    f"{_percent(flw_s, flw_n):+.0f}%", delta_color="off")
@@ -172,15 +153,15 @@ if case_key == "SGLT2":
         st.caption("Metrics give the difference of `F_SGLT2` relative to `F_normal`.")
 
     # --- 4 Tabs ---
-    t_mech, t_drug, t_model, t_ref = st.tabs(
-        ["Mechanism and Physiology", "Drug and Dose Approach", "Model Data", "References"]
+    t_model, t_mech, t_drug, t_ref = st.tabs(
+        ["Model data", "Mechanism and physiology", "Drug and dose", "References"]
     )
 
     with t_mech:
-        st.info("The mechanism description will be filled in once the source article is loaded.")
+        style.pending("Not written yet. The mechanism will be described from the source article.")
 
     with t_drug:
-        st.info("Drug and dose information will be filled in once the source article is loaded.")
+        style.pending("Not written yet. Drug and dose information will be taken only from a verified source.")
 
     with t_model:
         st.markdown("#### 1. Glucose excretion in the proximal tubule")
@@ -214,7 +195,7 @@ if case_key == "SGLT2":
 
     with t_ref:
         references_box(["hu2021"], title="References — Case 1", open=True)
-        st.info("Additional references will be added once the source article is loaded.")
+        style.pending("Clinical references will be added with the source article.")
 
 
 # ================================================================
@@ -230,8 +211,8 @@ elif case_key == "Hyperfiltration":
 
     # --- Patient summary card ---
     with st.container(border=True):
-        st.markdown("##### Patient Summary")
-        st.info("The patient profile and clinical context will be filled in once the source article is loaded.")
+        st.markdown("##### Patient summary")
+        style.pending("Not written yet. The patient profile and clinical context wait for the source article.")
         k1, k2 = st.columns(2)
         k1.metric("PT inlet water flow (filtration)", f"{qg_d:.0f} nl/min",
                    f"{_percent(qg_d, qg_n):+.0f}%", delta_color="off")
@@ -240,15 +221,15 @@ elif case_key == "Hyperfiltration":
         st.caption("Metrics give the difference of `F_diab_mod` relative to `F_normal`.")
 
     # --- 4 Tabs ---
-    t_mech, t_drug, t_model, t_ref = st.tabs(
-        ["Mechanism and Physiology", "Drug and Dose Approach", "Model Data", "References"]
+    t_model, t_mech, t_drug, t_ref = st.tabs(
+        ["Model data", "Mechanism and physiology", "Drug and dose", "References"]
     )
 
     with t_mech:
-        st.info("The mechanism description will be filled in once the source article is loaded.")
+        style.pending("Not written yet. The mechanism will be described from the source article.")
 
     with t_drug:
-        st.info("Drug and dose information will be filled in once the source article is loaded.")
+        style.pending("Not written yet. Drug and dose information will be taken only from a verified source.")
 
     with t_model:
         st.markdown("#### 1. Increased volume load entering the proximal tubule")
@@ -277,7 +258,7 @@ elif case_key == "Hyperfiltration":
 
     with t_ref:
         references_box(["hu2021"], title="References — Case 2", open=True)
-        st.info("Additional references will be added once the source article is loaded.")
+        style.pending("Clinical references will be added with the source article.")
 
 
 # ================================================================
@@ -293,8 +274,8 @@ elif case_key == "Hypertension":
 
     # --- Patient summary card ---
     with st.container(border=True):
-        st.markdown("##### Patient Summary")
-        st.info("The patient profile and clinical context will be filled in once the source article is loaded.")
+        st.markdown("##### Patient summary")
+        style.pending("Not written yet. The patient profile and clinical context wait for the source article.")
         k1, k2 = st.columns(2)
         k1.metric("mTAL outlet Na load", f"{fout_h:,.0f} pmol/min",
                    f"{_percent(fout_h, fout_n):+.0f}%", delta_color="off")
@@ -303,15 +284,15 @@ elif case_key == "Hypertension":
         st.caption("Metrics give the difference of `F_HT` relative to `F_normal`.")
 
     # --- 4 Tabs ---
-    t_mech, t_drug, t_model, t_ref = st.tabs(
-        ["Mechanism and Physiology", "Drug and Dose Approach", "Model Data", "References"]
+    t_model, t_mech, t_drug, t_ref = st.tabs(
+        ["Model data", "Mechanism and physiology", "Drug and dose", "References"]
     )
 
     with t_mech:
-        st.info("The mechanism description will be filled in once the source article is loaded.")
+        style.pending("Not written yet. The mechanism will be described from the source article.")
 
     with t_drug:
-        st.info("Drug and dose information will be filled in once the source article is loaded.")
+        style.pending("Not written yet. Drug and dose information will be taken only from a verified source.")
 
     with t_model:
         st.markdown("#### Sodium handling in the thick ascending limb (TAL)")
@@ -337,6 +318,6 @@ elif case_key == "Hypertension":
 
     with t_ref:
         references_box(["hu2021"], title="References — Case 3", open=True)
-        st.info("Additional references will be added once the source article is loaded.")
+        style.pending("Clinical references will be added with the source article.")
 
 cite_footer()

@@ -3,14 +3,15 @@ import streamlit as st
 import plotly.express as px
 
 import nav
+import style
 from ui_kit import q, DB, cite_footer, options, CD_SEGMENTS, valid_data
 from education import segment_info, cite_short
 
 scenario = nav.get("scenario")
 
-st.markdown("## Compare Nephron Types")
-st.caption("For the same segment + solute + compartment, sup and jux1–5 are overlaid. "
-           "Deep nephrons (jux5) descend furthest into the medulla.")
+st.markdown("## Nephron Types")
+st.caption("The superficial nephron against the five juxtamedullary ones, for one solute in one segment. "
+           "jux5 descends furthest into the medulla.")
 
 segs, solutes = options()
 compare_segs = [s for s in segs if s not in CD_SEGMENTS]
@@ -38,8 +39,7 @@ df, _ = valid_data(df, "con")
 if df.empty:
     st.warning(f"Segment `{segment}` only exists in a single nephron type.")
 else:
-    color_map = {"sup": "#dc2626", "jux1": "#93c5fd", "jux2": "#60a5fa",
-                 "jux3": "#3b82f6", "jux4": "#2563eb", "jux5": "#1e3a8a"}
+    color_map = style.NEPHRON_COLOR
     fig = px.line(df, x="position", y="value", color="nephron",
                   title=f"{segment} — {solute} ({compartment}) — by nephron type",
                   labels={"position": "Position (0–1)", "value": f"{solute} (mM)",
@@ -47,7 +47,7 @@ else:
                   color_discrete_map=color_map,
                   category_orders={"nephron": ["sup","jux1","jux2","jux3","jux4","jux5"]})
     fig.update_layout(hovermode="x unified", height=480)
-    fig.update_traces(line=dict(width=2.5))
+    fig.update_traces(line=dict(width=2))
     st.plotly_chart(fig, width='stretch')
     cite_footer()
 

@@ -15,7 +15,7 @@ CASES = {
         "scenario": "F_SGLT2",
         "reference": "F_normal",
         "label": "SGLT2 Inhibition",
-        "color": "#be185d",
+        "color": "#7a2f5a",
         "focus": {"segment": "cTAL", "solute": "Na"},
     },
     "Hyperfiltration": {
@@ -25,7 +25,7 @@ CASES = {
         "scenario": "F_diab_mod",
         "reference": "F_normal",
         "label": "Diabetes",
-        "color": "#ea580c",
+        "color": "#c0652a",
         "focus": {"segment": "PT", "solute": "Na"},
     },
     "Hypertension": {
@@ -35,12 +35,12 @@ CASES = {
         "scenario": "F_HT",
         "reference": "F_normal",
         "label": "Hypertension",
-        "color": "#a16207",
+        "color": "#a8861f",
         "focus": {"segment": "mTAL", "solute": "Na"},
     },
 }
 
-REFERENCE_COLOR = "#dc2626"
+REFERENCE_COLOR = "#4a463e"   # the baseline is drawn in a neutral ink
 
 # scenario code -> case key (which case, if any, is built on a given scenario)
 CASE_BY_SCENARIO = {case["scenario"]: key for key, case in CASES.items()}

@@ -202,5 +202,6 @@ def render_explore_bar():
         return
     st.markdown("---")
     st.caption(f"Your selection (**{selection_summary()}**) carries over to the other pages — continue in:")
-    for column, other in zip(st.columns(len(others)), others):
-        link(column, other)
+    row = st.container(horizontal=True, gap="medium")
+    for other in others:
+        link(row, other)

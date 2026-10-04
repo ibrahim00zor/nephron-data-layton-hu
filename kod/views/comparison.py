@@ -10,9 +10,8 @@ from ui_kit import (
 )
 
 st.markdown("## Scenario Comparison")
-st.caption("Pick 2–4 scenarios overlaid and see them on one chart. "
-           "This tab reveals **the real power of the 6-scenario library** — "
-           "how mTAL changes in diabetes, which effect SGLT2 reverses, etc.")
+st.caption("Two to four scenarios on one chart, for one solute in one segment, "
+           "with a table of how they differ at the outlet.")
 
 all_scenarios = scenario_list()
 segs, _ = options()
@@ -72,8 +71,8 @@ fig = px.line(
     color_discrete_map=SCENARIO_COLOR,
 )
 fig.update_layout(hovermode="x unified", height=500,
-                  legend=dict(title_text="Scenario"))
-fig.update_traces(line=dict(width=2.6))
+                  legend=dict(title_text="SCENARIO"))
+fig.update_traces(line=dict(width=2))
 st.plotly_chart(fig, width='stretch')
 cite_footer()
 
@@ -107,10 +106,9 @@ if len(summary) >= 2 and "vs_reference_%" in summary.columns:
     if biggest and biggest != ref:
         ratio = summary.loc[biggest, "vs_reference_%"]
         st.info(
-            f"**Observation:** with `{ref}` as reference, **`{biggest}`** "
-            f"({SCENARIO_LABEL.get(biggest, biggest)}) shows the largest deviation — "
-            f"**{solute} {ratio:+.1f}%** different at the outlet of segment `{segment}`. "
-            f"This perturbation has a clear effect on this segment."
+            f"Against `{ref}`, the scenario that differs most is `{biggest}` "
+            f"({SCENARIO_LABEL.get(biggest, biggest)}): {solute} at the outlet of `{segment}` is "
+            f"**{ratio:+.1f}%** different."
         )
 
 # Download CSV

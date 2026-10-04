@@ -1,21 +1,25 @@
-"""data_integrity.py — Database inventory + known limits."""
+"""data_integrity.py — What is in the dataset, what converged, and what to know about it."""
 import os
 import streamlit as st
 
 from ui_kit import q, DB, PARQUET
 
-st.markdown("## Data Integrity Panel")
-st.caption(f"Source: `{os.path.basename(PARQUET)}` · "
-           f"All scenarios are kept combined in a single tidy Parquet.")
+st.markdown("## Data Integrity")
+st.caption(f"Everything in the app is read from one tidy table, `{os.path.basename(PARQUET)}`. "
+           f"This page counts what is in it.")
 
-# Scenario distribution
-st.markdown("**Scenario distribution**")
+# ------------------------------------------------------------
+#  Inventory
+# ------------------------------------------------------------
+st.markdown("### What is in the table")
+
+st.markdown("<div class='nd-label'>Rows per scenario</div>", unsafe_allow_html=True)
 by_cond = q(f"SELECT condition AS scenario, COUNT(*) AS rows FROM {DB} GROUP BY condition ORDER BY condition")
 st.dataframe(by_cond, width='stretch', hide_index=True)
 
-c1, c2 = st.columns(2)
+c1, c2 = st.columns(2, gap="large")
 with c1:
-    st.markdown("**Variable categories**")
+    st.markdown("<div class='nd-label'>By variable</div>", unsafe_allow_html=True)
     by_var = q(f"""
         SELECT variable, COUNT(*) AS rows,
                COUNT(DISTINCT solute) AS solutes, COUNT(DISTINCT compartment) AS compartments
@@ -23,23 +27,25 @@ with c1:
     """)
     st.dataframe(by_var, width='stretch', hide_index=True)
 with c2:
-    st.markdown("**Segment distribution**")
+    st.markdown("<div class='nd-label'>By segment</div>", unsafe_allow_html=True)
     by_seg = q(f"""
         SELECT segment, COUNT(DISTINCT nephron) AS nephron_types, COUNT(*) AS rows
         FROM {DB} GROUP BY segment ORDER BY rows DESC
     """)
     st.dataframe(by_seg, width='stretch', hide_index=True)
 
-st.markdown("**Nephron-type distribution**")
+st.markdown("<div class='nd-label'>By nephron type</div>", unsafe_allow_html=True)
 by_neph = q(f"SELECT nephron, COUNT(*) AS rows FROM {DB} GROUP BY nephron ORDER BY rows DESC")
 st.dataframe(by_neph, width='stretch', hide_index=True)
 
-st.markdown("---")
-st.markdown("### Scenario data integrity")
-st.caption("The model's Newton solver may fail to converge for the collecting duct "
-           "(IMCD merged) in some scenarios. NaN and a negative Lumen osmolality (a solute "
-           "total cannot be physically negative) indicate a genuine convergence failure. "
-           "Distal/urine claims should be taken only from CLEAN scenarios.")
+# ------------------------------------------------------------
+#  Convergence
+# ------------------------------------------------------------
+st.markdown("### Which scenarios converged")
+st.caption("The model's Newton solver can fail in the collecting duct (IMCD, merged nephron). A NaN, or "
+           "a negative osmolality in the lumen — a sum of solutes cannot be negative — marks a real "
+           "convergence failure. Statements about the distal nephron or the urine should be taken "
+           "only from the scenarios marked clean.")
 integ = q(f"""
     SELECT condition AS scenario,
         SUM(CASE WHEN value IS NULL OR isnan(value) THEN 1 ELSE 0 END) AS nan,
@@ -47,55 +53,47 @@ integ = q(f"""
     FROM {DB} GROUP BY condition ORDER BY condition
 """)
 integ["status"] = integ.apply(
-    lambda r: "CLEAN" if (r["nan"] == 0 and r["negative_osm"] == 0)
-    else "Collecting duct broken (proximal OK)", axis=1)
+    lambda r: "clean" if (r["nan"] == 0 and r["negative_osm"] == 0)
+    else "collecting duct did not converge (proximal segments fine)", axis=1)
 st.dataframe(integ, width='stretch', hide_index=True)
 
-st.markdown("---")
-st.markdown("### Known open issues")
+# ------------------------------------------------------------
+#  Things to know
+# ------------------------------------------------------------
+st.markdown("### Things to know about this dataset")
 
 st.markdown("""
-<div style="border:1px solid #bbf7d0;background:#f0fdf4;padding:12px 14px;border-radius:6px;margin-bottom:10px;">
-  <b style="color:#166534;">Resolved ✓ — Multi-membrane flux files split per membrane</b><br>
-  <span style="color:#374151;">In CNT / CCD / OMCD some transporters (AE1 = 2 membranes,
-  HATPase / HKATPase = 3 membranes, NHE1 = 2 membranes) are written into a single file,
-  interleaved. The loader now separates them by stride, places each profile on the correct
-  position axis, and labels it in the <code>membrane</code> column with the anatomic
-  compartment pair (e.g. Lumen-ICA = type-A intercalated cell apical). 246 files parsed
-  across 6 scenarios.</span>
-</div>
-<div style="border:1px solid #bfdbfe;background:#eff6ff;padding:12px 14px;border-radius:6px;margin-bottom:10px;">
-  <b style="color:#1e40af;">Some transporter profiles share a key in the current dataset</b><br>
-  <span style="color:#374151;">Na/K-ATPase, GLUT1/2 and KCC4 sit on several basolateral membranes
-  (2 to 6, depending on the segment). The model writes one file per membrane; the current Parquet
-  stores those profiles under one key, without the membrane label. The app sums them — the
-  transporter's total basolateral flux — instead of plotting them as one line. The loader now keeps
-  the membrane label, so a rebuilt dataset will carry it; the values themselves are unaffected.</span>
-</div>
-<div style="border:1px solid #bfdbfe;background:#eff6ff;padding:12px 14px;border-radius:6px;margin-bottom:10px;">
-  <b style="color:#1e40af;">Scenario library 6/10 successful</b><br>
-  <span style="color:#374151;">4 scenarios (F_diab_severe, F_ACE, F_obese, F_UNX) gave a numerical
-  convergence failure in the Newton solver (np.exp overflow). This is a <b>known limit</b> of
-  the model, not a project error. The model's solver could be softened in the future.</span>
-</div>
-<div style="border:1px solid #bfdbfe;background:#eff6ff;padding:12px 14px;border-radius:6px;margin-bottom:10px;">
-  <b style="color:#1e40af;">Units: what is confirmed and what is not</b><br>
-  <span style="color:#374151;"><b>Transporter fluxes</b> (<code>variable='flux'</code>) are labelled
-  "pmol/min" in the dataset, but the model writes them in its internal units. They are flux densities:
-  1 model unit = 600 pmol/(min·cm²) of luminal surface. <b>Diameter and length</b> are in cm. Both
-  are confirmed by mass balance — integrating apical + paracellular flux over the luminal surface
-  reproduces the drop in luminal flow (see the Transporters page). The unit of <b>pressure</b> has
-  not been confirmed from the source.</span>
-</div>
-<div style="border:1px solid #bfdbfe;background:#eff6ff;padding:12px 14px;border-radius:6px;">
-  <b style="color:#1e40af;">The interstitial gradient is prescribed (~734 mOsm at the papilla)</b><br>
-  <span style="color:#374151;">Interstitial fluid composition is a model <b>input</b>: specified at
-  the cortex, the outer–inner medullary boundary and the papillary tip, linear in between
-  (Layton &amp; Layton 2019, Table 2), and identical in all six scenarios here. The ~734 mOsm is
-  therefore not a result and not a failed prediction; ~1200 mOsm is reported for maximal
-  antidiuresis. The model has no vasculature and does not simulate how the gradient forms.</span>
-</div>
-""", unsafe_allow_html=True)
+<dl class="nd-issues">
+  <dt><span class="nd-label done">Resolved</span>Interleaved multi-membrane flux files</dt>
+  <dd>In CNT, CCD and OMCD some transporters (AE1 on 2 membranes, HATPase and HKATPase on 3, NHE1 on 2)
+  are written by the model into a single file, interleaved. The loader separates them by stride, puts
+  each profile on the right position axis, and names the membrane in the <code>membrane</code> column
+  (for example Lumen-ICA, the apical membrane of the type-A intercalated cell). 246 files across the
+  6 scenarios.</dd>
 
-st.markdown("---")
-st.caption("Data structure + citations: see the README.")
+  <dt><span class="nd-label">Note</span>Some transporter profiles share a key</dt>
+  <dd>Na/K-ATPase, GLUT1/2 and KCC4 sit on several basolateral membranes (2 to 6, depending on the
+  segment). The model writes one file per membrane; the current table stores those profiles under one
+  key, without the membrane. The app sums them, which gives the transporter's total basolateral flux,
+  instead of plotting them as one line. The loader now keeps the membrane, so a rebuilt table will
+  carry it. The values themselves are not affected.</dd>
+
+  <dt><span class="nd-label">Limit</span>Six scenarios out of ten</dt>
+  <dd>Four scenarios (F_diab_severe, F_ACE, F_obese, F_UNX) failed to converge in the Newton solver
+  (an overflow in <code>np.exp</code>). This is a limit of the model, not an error of this project.</dd>
+
+  <dt><span class="nd-label">Units</span>What is confirmed and what is not</dt>
+  <dd>Transporter fluxes (<code>variable='flux'</code>) are labelled "pmol/min" in the table, but the
+  model writes them in its internal units. They are flux densities: 1 model unit = 600 pmol/(min·cm²) of
+  luminal surface. Diameter and length are in cm. Both are confirmed by mass balance: integrating apical
+  plus paracellular flux over the luminal surface reproduces the drop in luminal flow (see the
+  Transporters page). The unit of pressure has not been confirmed from the source.</dd>
+
+  <dt><span class="nd-label">Input</span>The interstitial gradient is prescribed</dt>
+  <dd>The composition of the interstitial fluid is given to the model: specified at the cortex, the
+  outer–inner medullary boundary and the papillary tip, linear in between (Layton &amp; Layton 2019,
+  Table 2), and identical in all six scenarios here. The ~734 mOsm at the papilla is therefore not a
+  result and not a failed prediction; ~1200 mOsm is reported for maximal antidiuresis. The model has no
+  vasculature and does not simulate how the gradient forms.</dd>
+</dl>
+""", unsafe_allow_html=True)

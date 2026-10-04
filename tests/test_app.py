@@ -90,7 +90,7 @@ def test_selection_travels_between_pages():
     main_select(at, "Solute").select("urea").run()
     main_select(at, "Segment").select("mTAL").run()
     main_select(at, "Nephron").select("jux3").run()
-    assert "urea · mTAL · jux3" in " ".join(c.value for c in at.sidebar.caption)
+    assert "urea · mTAL · jux3" in " ".join(m.value for m in at.sidebar.markdown)
 
     ok(at.switch_page(nav.path("comparison")).run())
     assert main_select(at, "Solute").value == "urea"

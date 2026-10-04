@@ -2,6 +2,7 @@
 import streamlit as st
 
 import nav
+import style
 from ui_kit import (
     q, DB, make_chart, cite_footer, neph_for,
     options, NEPHRONS, valid_data, segment_broken,
@@ -12,8 +13,8 @@ from interpretation import interpret
 scenario = nav.get("scenario")
 
 st.markdown("## Segment Profile")
-st.caption("How a single solute changes along one segment. Lumen + Bath can be overlaid; "
-           "an automatic mass/volume interpretation appears under each chart.")
+st.caption("One solute along one segment, in the lumen and, if you wish, in the interstitium beside it. "
+           "Under the chart, the change is split into what is mass and what is water.")
 
 segs, solutes = options()
 
@@ -85,7 +86,7 @@ else:
                 vol_out=float(vol_df["value"].iloc[-1]),
                 solute=solute,
             )
-            st.info(f"**Automatic physiological interpretation:** {note}")
+            style.note(note, label="Reading of this profile, mass against volume")
 
     cite_footer()
 
@@ -98,7 +99,7 @@ else:
             if summary:
                 st.markdown(summary)
             else:
-                st.caption("_Summary not written yet — to be filled in from `kod/education.py`._")
+                style.pending("The summary of this segment is not written yet.")
             if seg.get("note"):
                 st.info(f"Note: {seg['note']}")
             a, b = st.columns(2)

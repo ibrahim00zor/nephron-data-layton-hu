@@ -11,10 +11,11 @@ import duckdb
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-import plotly.io as pio
 
 import nav
+import style
 from clinical_cases import CASES, CASE_BY_SCENARIO
+from style import SCENARIO_COLOR  # noqa: F401  (re-exported: pages import it from here)
 
 APP_NAME = "Nephron Data (Layton/Hu)"
 
@@ -42,7 +43,7 @@ SCENARIO_LABEL = {
     "M_SGLT2":    "♂ + SGLT2 inhibitor",
 }
 SCENARIO_DETAIL = {
-    "F_normal":   "Healthy adult female, normal hydration. <b>Reference for all comparisons.</b>",
+    "F_normal":   "Healthy adult female, normal hydration. The reference for every comparison.",
     "M_normal":   "Healthy adult male. Reference for sex-difference analyses.",
     "F_diab_mod": "Moderate diabetes. Glucose load rises in the PT.",
     "F_HT":       "Hypertension. Tubular pressure and renal blood flow deviate from baseline.",
@@ -50,46 +51,12 @@ SCENARIO_DETAIL = {
     "M_SGLT2":    "Gliflozin, male. Sex × drug comparison against F_SGLT2.",
 }
 
-# One colour per scenario, shared by every chart that overlays scenarios
-# (female scenarios in red tones, male scenarios in blue tones).
-SCENARIO_COLOR = {
-    "F_normal":   "#dc2626",
-    "F_diab_mod": "#ea580c",
-    "F_HT":       "#a16207",
-    "F_SGLT2":    "#be185d",
-    "M_normal":   "#1e40af",
-    "M_SGLT2":    "#0891b2",
-}
-
 # ============================================================
 #  Page frame (called once per run by app.py, before the page body)
 # ============================================================
 def apply_frame():
-    """Chart theme and global CSS shared by every page."""
-    if "nephron" not in pio.templates:
-        pio.templates["nephron"] = pio.templates["simple_white"]
-        pio.templates["nephron"].layout.update(
-            font=dict(family="Inter, system-ui, -apple-system, sans-serif", size=13, color="#1f2937"),
-            title=dict(font=dict(size=15, color="#111827")),
-            colorway=["#2563eb", "#dc2626", "#059669", "#d97706", "#7c3aed", "#0891b2", "#be185d"],
-            hoverlabel=dict(bgcolor="white", bordercolor="#e5e7eb", font=dict(size=12)),
-            margin=dict(l=50, r=20, t=50, b=50),
-            xaxis=dict(gridcolor="#f3f4f6", zerolinecolor="#e5e7eb"),
-            yaxis=dict(gridcolor="#f3f4f6", zerolinecolor="#e5e7eb"),
-        )
-    pio.templates.default = "nephron"
-    # Global CSS
-    st.markdown("""
-    <style>
-      .block-container { padding-top: 3.5rem; padding-bottom: 2rem; max-width: 1400px; }
-      h1, h2, h3 { letter-spacing: -0.01em; }
-      div[data-testid="stMetricValue"] { font-size: 1.35rem; }
-      div[data-testid="stMetricLabel"] { font-size: 0.82rem; color: #4b5563; }
-      hr { margin: 1rem 0; border-color: #e5e7eb; }
-      .cite-footer { font-size:0.78rem; color:#6b7280; padding-top:0.4rem;
-                     border-top:1px solid #f3f4f6; margin-top:0.5rem; }
-    </style>
-    """, unsafe_allow_html=True)
+    """Chart template and stylesheet shared by every page (see style.py)."""
+    style.apply()
 
 # ============================================================
 #  Query helpers (cached)
@@ -177,8 +144,11 @@ def segment_broken(scenario, segment):
 def render_sidebar():
     scenarios = scenario_list()
     with st.sidebar:
-        st.markdown(f"### {APP_NAME}")
-        st.caption("Layton/Hu model — interactive data explorer")
+        st.markdown(
+            "<div class='nd-side-title'>Nephron Data</div>"
+            "<div class='nd-side-meta'>after the Layton/Hu model of the human nephron</div>",
+            unsafe_allow_html=True,
+        )
 
         scenario = nav.select(
             st, "Active scenario", scenarios, "scenario", fallback="F_normal",
@@ -187,12 +157,7 @@ def render_sidebar():
         )
         detail = SCENARIO_DETAIL.get(scenario, "")
         if detail:
-            st.markdown(
-                f"<div style='background:#eff6ff;border:1px solid #bfdbfe;padding:8px 12px;"
-                f"border-radius:6px;font-size:0.82rem;color:#1e3a8a;'>{detail}</div>",
-                unsafe_allow_html=True,
-            )
-        st.caption(f"Code: `{scenario}` · {len(scenarios)}-scenario library")
+            st.markdown(f"<div class='nd-side-about'>{detail}</div>", unsafe_allow_html=True)
 
         # Model world -> clinical world: the case (if any) that is built on this scenario
         case_key = CASE_BY_SCENARIO.get(scenario)
@@ -205,14 +170,19 @@ def render_sidebar():
         if scenario in broken:
             segs = ", ".join(sorted(broken[scenario]))
             st.warning(
-                f"**Data warning:** segment(s) **{segs}** of this scenario failed to "
-                f"converge numerically (collecting duct). Their data is invalid and is "
-                f"hidden in the charts. Proximal–DCT is reliable. Details: Data Integrity."
+                f"**{segs}** did not converge in this scenario (collecting duct). Its data is "
+                f"invalid and is hidden in the charts; proximal tubule to DCT is reliable. "
+                f"See Data Integrity."
             )
 
         # The selection that travels with the user across pages
         st.markdown("---")
-        st.caption(f"**Selection** (kept across pages)  \n{nav.selection_summary()}")
+        st.markdown(
+            f"<div class='nd-label'>Selection, kept across pages</div>"
+            f"<div class='nd-side-meta' style='font-size:0.8rem;color:{style.INK_SOFT};'>"
+            f"{nav.selection_summary()}</div>",
+            unsafe_allow_html=True,
+        )
         if not nav.is_default_selection():
             if st.button("Reset selection", key="_sidebar_reset", width="stretch"):
                 nav.reset_selection()
@@ -220,32 +190,32 @@ def render_sidebar():
 
         st.markdown("---")
         sb = health_metrics()
-        c1, c2 = st.columns(2)
-        c1.metric("This scenario", f"{sb['rows'] // max(sb['scenario_count'],1):,} rows")
-        c2.metric("Library", f"{sb['scenario_count']} scenarios")
-        st.caption(
-            f"Model structure: **{sb['segments']}** segments · **{sb['solutes']}** solutes · "
-            f"**{sb['nephrons']}** nephrons · **{sb['variables']}** variables"
+        st.markdown(
+            f"<div class='nd-label'>The dataset</div>"
+            f"<div class='nd-side-meta'>{sb['scenario_count']} scenarios · "
+            f"{sb['rows'] // max(sb['scenario_count'], 1):,} rows each<br>"
+            f"{sb['segments']} segments · {sb['solutes']} solutes · {sb['nephrons']} nephron types<br>"
+            f"scenario code <span style='color:{style.INK_SOFT};'>{scenario}</span></div>",
+            unsafe_allow_html=True,
         )
 
         st.markdown("---")
-        with st.expander("Data source & citation"):
+        with st.expander("Source and citation"):
             st.markdown(
-                "**Model:** Layton/Hu (`mstadt/nephron`)\n\n"
-                "**Citation:** Hu R., McDonough A.A., Layton A.T. (2021). *Sex differences in solute "
+                "**Model.** Hu R., McDonough A.A., Layton A.T. (2021). *Sex differences in solute "
                 "and water handling in the human kidney: Modeling and functional implications.* "
                 "iScience 24(6):102667. "
-                "[doi:10.1016/j.isci.2021.102667](https://doi.org/10.1016/j.isci.2021.102667)\n\n"
-                "**This project:** Zor, İ. (2026). *Nephron Data (Layton/Hu).* Zenodo. "
+                "[doi:10.1016/j.isci.2021.102667](https://doi.org/10.1016/j.isci.2021.102667)  \n"
+                "Code: `mstadt/nephron`\n\n"
+                "**This tool.** Zor, İ. (2026). *Nephron Data (Layton/Hu).* Zenodo. "
                 "[doi:10.5281/zenodo.20489610](https://doi.org/10.5281/zenodo.20489610)"
             )
             if "provenance" in nav.PAGES:
-                nav.link(st, "provenance", "Model & provenance: scenarios, inputs, how to reproduce")
+                nav.link(st, "provenance", "Scenarios, inputs, how to reproduce")
         with st.expander("Units"):
             st.markdown(
-                "Concentration: **mM** · Solute flow: **pmol/min** · Volume: **nl/min** · "
-                "Osmolality: **mOsm** · Potential: **mV** · "
-                "Transporter flux: **pmol/(min·cm²)**"
+                "Concentration mM · solute flow pmol/min · volume nl/min · osmolality mOsm · "
+                "potential mV · transporter flux pmol/(min·cm²)"
             )
     return scenario
 
@@ -253,7 +223,7 @@ def render_sidebar():
 #  Chart helper
 # ============================================================
 def make_chart(df, x, y, color, title, xlab, ylab, color_label="Series",
-               category_orders=None, height=460, color_map=None):
+               category_orders=None, height=460, color_map=None, legend_below=False):
     if color_map:
         fig = px.line(df, x=x, y=y, color=color, title=title,
                       labels={x: xlab, y: ylab, color: color_label},
@@ -264,8 +234,11 @@ def make_chart(df, x, y, color, title, xlab, ylab, color_label="Series",
                       labels={x: xlab, y: ylab, color: color_label},
                       category_orders=category_orders or {})
     fig.update_layout(hovermode="x unified", height=height,
-                      legend=dict(title_text=color_label))
-    fig.update_traces(line=dict(width=2.5))
+                      legend=dict(title_text=color_label.upper()))
+    if legend_below:   # long series names: give the plot the full width
+        fig.update_layout(legend=dict(orientation="h", title_text="", x=0, xanchor="left",
+                                      y=-0.2, yanchor="top"))
+    fig.update_traces(line=dict(width=2))
     return fig
 
 # ============================================================
@@ -273,18 +246,17 @@ def make_chart(df, x, y, color, title, xlab, ylab, color_label="Series",
 # ============================================================
 def cite_footer():
     st.markdown(
-        "<div class='cite-footer'>"
-        "<b>Source:</b> Hu et al. 2021, <i>iScience</i> 24:102667 &nbsp;·&nbsp; "
-        "<b>This tool:</b> Zor 2026, "
-        "<a href='https://doi.org/10.5281/zenodo.20489610' target='_blank' "
-        "style='color:#1e40af;text-decoration:none;'>doi:10.5281/zenodo.20489610</a> &nbsp;·&nbsp; "
-        "<b>Units:</b> concentration mM, volume nl/min, osmolality mOsm"
+        "<div class='nd-cite'>"
+        "Data: Hu, McDonough &amp; Layton 2021, <i>iScience</i> 24:102667. "
+        "This tool: Zor 2026, "
+        "<a href='https://doi.org/10.5281/zenodo.20489610' target='_blank'>doi:10.5281/zenodo.20489610</a>. "
+        "Concentration in mM, volume in nl/min, osmolality in mOsm."
         "</div>",
         unsafe_allow_html=True,
     )
 
 # ============================================================
-#  Reference / citation system (academic reference cards)
+#  Reference / citation system (bibliography entries)
 # ============================================================
 # RULE: only real references with a verified citation/DOI go here
 # (consistent with CITATION.cff). No fabricated citation/DOI/title, ever.
@@ -412,34 +384,25 @@ REFERENCES = {
 }
 
 def reference_card(ref):
-    """Renders a single reference as an academic info box."""
+    """Renders a single reference as a bibliography entry (hanging indent, type label, DOI)."""
     year = f" ({ref['year']})" if ref.get("year") else ""
-    subline = [s for s in (ref.get("source"), (f"ISBN {ref['isbn']}" if ref.get("isbn") else None)) if s]
+    where = [x for x in (ref.get("source"), (f"ISBN {ref['isbn']}" if ref.get("isbn") else None)) if x]
     if ref.get("doi"):
-        link = (f"<a href='https://doi.org/{ref['doi']}' target='_blank' "
-                f"style='color:#1e40af;text-decoration:none;'>doi:{ref['doi']}</a>")
+        link = f" <a href='https://doi.org/{ref['doi']}' target='_blank'>doi:{ref['doi']}</a>"
     elif ref.get("url"):
-        link = (f"<a href='{ref['url']}' target='_blank' "
-                f"style='color:#1e40af;text-decoration:none;'>{ref['url']}</a>")
+        link = f" <a href='{ref['url']}' target='_blank'>{ref['url'].replace('https://', '')}</a>"
     else:
         link = ""
+    gloss = f"<span class='gloss'>{ref['note']}</span>" if ref.get("note") else ""
     st.markdown(
-        "<div style='border:1px solid #e5e7eb;border-left:3px solid #1e3a8a;"
-        "background:#f8fafc;border-radius:6px;padding:10px 14px;margin:6px 0;font-size:0.84rem;'>"
-        "<span style='display:inline-block;background:#1e3a8a;color:white;font-size:0.66rem;"
-        f"padding:1px 8px;border-radius:10px;letter-spacing:0.03em;'>{ref.get('type','Reference')}</span> "
-        f"<b style='color:#111827;'>{ref.get('authors','')}{year}.</b> {ref.get('title','')}. "
-        f"<i style='color:#4b5563;'>{' · '.join(subline)}</i>"
-        + (f"<br>{link}" if link else "")
-        + (f"<div style='color:#6b7280;font-size:0.78rem;margin-top:4px;'>{ref['note']}</div>"
-           if ref.get("note") else "")
-        + "</div>",
+        f"<div class='nd-ref'><span class='nd-label'>{ref.get('type', 'Reference')}</span>"
+        f"{ref.get('authors', '')}{year}. {ref.get('title', '')}. <i>{'; '.join(where)}</i>.{link}{gloss}</div>",
         unsafe_allow_html=True,
     )
 
 def references_box(keys, title="References", extra_note=None, open=False):
-    """Academic 'References' section (expander) for the given reference keys.
-    Silently skips an undefined key — never draws a fabricated card."""
+    """'References' section (expander) for the given reference keys.
+    Silently skips an undefined key — never draws a fabricated entry."""
     with st.expander(title, expanded=open):
         for k in keys:
             ref = REFERENCES.get(k)
