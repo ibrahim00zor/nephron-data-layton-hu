@@ -13,6 +13,7 @@ like journal figures. Colours and fonts of Streamlit's own widgets are set in
 """
 import html
 import re
+from urllib.parse import quote
 
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -31,6 +32,8 @@ PAPER = "#faf7f0"
 PAPER_DEEP = "#f1ecdf"
 ACCENT = "#8c2f1b"        # dark brick red — the only accent
 GOOD = "#3f5e30"          # a pass mark, used sparingly
+
+GRAPHITE = "#2e2a26"      # the pencil: drawings, rules, the lines of a chart
 
 SERIF = "'Source Serif 4', Georgia, 'Times New Roman', serif"
 MONO = "'IBM Plex Mono', Menlo, Consolas, monospace"
@@ -71,6 +74,65 @@ NEPHRON_COLOR = {
 REFERENCE_SERIES = "#4a463e"   # the baseline in a "case vs normal" chart
 
 
+# ============================================================
+#  Paper and pencil
+# ============================================================
+# The page is meant to feel like paper that has been drawn on, without pretending:
+# - the paper has a tooth (a grain so slight it is felt more than seen);
+# - what is DRAWN (the nephron) is drawn by hand: the line wanders a little and is found in
+#   two passes, and tone is hatched (see nephron_figure.py);
+# - what is MEASURED (the line of a chart, a rule) is drawn along a ruler: its position is
+#   exact, only its texture is that of graphite. Data is never displaced.
+def _svg_url(svg):
+    return 'url("data:image/svg+xml,' + quote(svg, safe="/:=,;'() ") + '")'
+
+
+# the tooth of the paper: a fine grain, and a much slower unevenness of tone under it
+_GRAIN = _svg_url(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'>"
+    "<filter id='g' x='0' y='0' width='100%' height='100%'>"
+    "<feTurbulence type='fractalNoise' baseFrequency='0.72 0.86' numOctaves='3' seed='8' stitchTiles='stitch'/>"
+    "<feColorMatrix type='matrix' values='0 0 0 0 0.30  0 0 0 0 0.25  0 0 0 0 0.17  0 0 0 0.14 -0.015'/>"
+    "</filter><rect width='260' height='260' filter='url(#g)'/></svg>")
+_MOTTLE = _svg_url(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900'>"
+    "<filter id='m' x='0' y='0' width='100%' height='100%'>"
+    "<feTurbulence type='fractalNoise' baseFrequency='0.006' numOctaves='2' seed='21' stitchTiles='stitch'/>"
+    "<feColorMatrix type='matrix' values='0 0 0 0 0.45  0 0 0 0 0.36  0 0 0 0 0.22  0 0 0 0.10 -0.03'/>"
+    "</filter><rect width='900' height='900' filter='url(#m)'/></svg>")
+PAPER_TEXTURE = f"{_GRAIN}, {_MOTTLE}"
+
+
+def _rule(colour, weight):
+    """A line ruled in pencil: straight, but with the grain and the uneven pressure of graphite."""
+    return _svg_url(
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 6' preserveAspectRatio='none'>"
+        "<filter id='t' x='0' y='0' width='100%' height='100%'>"
+        "<feTurbulence type='fractalNoise' baseFrequency='0.5 0.9' numOctaves='2' seed='5'/>"
+        "<feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.5 1.55'/>"
+        "<feComposite in='SourceGraphic' operator='in'/></filter>"
+        f"<g filter='url(#t)' fill='none' stroke='{colour}' stroke-linecap='round'>"
+        f"<path d='M3,3.1 C210,2.7 430,3.5 650,3 S1010,2.8 1197,3.2' stroke-width='{weight}'/>"
+        f"<path d='M60,3.5 C330,3.1 720,3.4 1140,2.9' stroke-width='{weight * 0.55:.2f}' opacity='0.45'/>"
+        "</g></svg>")
+
+
+RULE_STRONG = _rule(GRAPHITE, 1.25)
+RULE_LIGHT = _rule("#8d8573", 1.0)
+
+# Filters the page's own SVG (the charts) can refer to. Written once, with the stylesheet.
+DEFS = (
+    "<svg xmlns='http://www.w3.org/2000/svg' aria-hidden='true' "
+    "style='position:absolute;width:0;height:0;overflow:hidden'><defs>"
+    # graphite: erodes a line with the tooth of the paper; it does not move it
+    "<filter id='nd-graphite' filterUnits='userSpaceOnUse' x='-80' y='-80' width='2600' height='1700' "
+    "color-interpolation-filters='sRGB'>"
+    "<feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='7' result='grain'/>"
+    "<feColorMatrix in='grain' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.25 1.5' result='tooth'/>"
+    "<feComposite in='SourceGraphic' in2='tooth' operator='in'/></filter>"
+    "</defs></svg>"
+)
+
 # A small figure is read, not operated: no toolbar over it, no zooming by accident.
 QUIET_CHART = {"displayModeBar": False, "scrollZoom": False, "doubleClick": False}
 
@@ -79,7 +141,7 @@ QUIET_CHART = {"displayModeBar": False, "scrollZoom": False, "doubleClick": Fals
 # ============================================================
 def _template():
     axis = dict(
-        showline=True, linecolor=INK_SOFT, linewidth=1,
+        showline=True, linecolor=GRAPHITE, linewidth=1.2,
         ticks="outside", ticklen=4, tickcolor=INK_SOFT,
         tickfont=dict(family=MONO, size=11.5, color=MUTED),
         title=dict(font=dict(family=SERIF, size=13.5, color=INK_SOFT), standoff=10),
@@ -333,6 +395,32 @@ body.nd-keys-on .nd-keys {{ display: block; }}
 .nd-side-title {{ font-size: 1.12rem; font-weight: 600; line-height: 1.2; margin-bottom: 0.1rem; }}
 .nd-side-meta {{ font-family: {MONO}; font-size: 0.72rem; color: {MUTED}; line-height: 1.6; }}
 .nd-side-about {{ font-size: 0.9rem; color: {INK_SOFT}; font-style: italic; line-height: 1.45; margin: -0.3rem 0 0.2rem; }}
+
+/* ---------- paper and pencil (see the note above DEFS) ---------- */
+[data-testid="stMain"] {{ background-image: {PAPER_TEXTURE}; background-attachment: local; }}
+[data-testid="stSidebarContent"] {{ background-image: {PAPER_TEXTURE}; background-attachment: local; }}
+[data-testid="stHeader"] {{ background-image: {PAPER_TEXTURE}; }}
+
+hr {{ border: 0; height: 6px; background: {RULE_LIGHT} center / 100% 6px no-repeat; }}
+.nd-panel-head, .nd-subhead, figure.nd-plate, .nd-reading, .nd-colophon {{
+  border-top: 0; background: {RULE_STRONG} top left / 100% 6px no-repeat; padding-top: 0.7rem;
+}}
+.nd-cite, .nd-ledger .row, dl.nd-issues dt {{
+  border-top: 0; background: {RULE_LIGHT} top left / 100% 6px no-repeat;
+}}
+.nd-cite {{ padding-top: 0.6rem; }}
+.nd-ledger .row {{ padding-top: 3px; }}
+dl.nd-issues dt {{ padding-top: 0.85rem; }}
+.nd-ledger {{ border-bottom: 0; background: {RULE_LIGHT} bottom left / 100% 6px no-repeat; padding-bottom: 5px; }}
+
+/* a chart is drawn on the same sheet: no box of its own under it */
+.js-plotly-plot .main-svg {{ background: transparent !important; }}
+.js-plotly-plot .main-svg .bg {{ fill: transparent !important; }}
+
+/* the lines of a chart are graphite: textured, never displaced */
+.js-plotly-plot .cartesianlayer .scatterlayer,
+.js-plotly-plot .cartesianlayer .xlines-above,
+.js-plotly-plot .cartesianlayer .ylines-above {{ filter: url(#nd-graphite); }}
 </style>
 """
 
@@ -341,7 +429,7 @@ def apply():
     """Register the chart template and write the stylesheet (once per run, from app.py)."""
     pio.templates["nephron"] = _template()
     pio.templates.default = "nephron"
-    st.markdown(CSS, unsafe_allow_html=True)
+    st.markdown(CSS + DEFS, unsafe_allow_html=True)
 
 
 # ============================================================

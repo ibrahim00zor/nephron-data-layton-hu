@@ -38,6 +38,21 @@ def test_plate_marks_a_segment_without_usable_data():
         assert "nd-t-IMCD" not in svg             # ... and no tint
 
 
+def test_tone_is_hatched_and_follows_the_value():
+    svg = figure.plate(VALUES)
+    _parse(svg)
+    for code in VALUES:                           # a wash and a mask for the hatching, per segment
+        assert f"id='nd-t-{code}'" in svg and f"id='nd-m-{code}'" in svg, code
+        assert f"mask='url(#nd-m-{code})'" in svg, code
+    grey = lambda value: int(figure._level(value)[4:].split(",")[0])     # noqa: E731
+    assert grey(80) < grey(300) < grey(750)       # the higher the value, the more hatching is let through
+    assert grey(-5) == grey(80) and grey(9999) == grey(750)
+    # a segment without data keeps a broken outline and gets no tone at all
+    partial = figure.plate({k: v for k, v in VALUES.items() if k != "IMCD"})
+    assert "stroke-dasharray='5 3.5'" in partial and "nd-m-IMCD" not in partial
+    assert "stroke-dasharray='5 3.5'" not in svg
+
+
 def test_tint_is_clamped_and_ordered():
     assert figure.tint(-50) == figure.tint(80) == figure.SCALE[0][1]
     assert figure.tint(5000) == figure.SCALE[-1][1]

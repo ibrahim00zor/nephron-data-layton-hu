@@ -92,8 +92,14 @@ Requires `streamlit>=1.52`. The dataset (`veri/nephron_veritabani.parquet`) is u
     against the interstitium, with ways on to Segment Profile and Transporters. The long loops
     of the juxtamedullary nephrons (one target, five bend values), the glomerulus and the
     macula densa can be pointed at too. The areas to point at are wide (30 px around a line).
-  - *The figure is drawn.* The lines pass through a slight unevenness, as from a pencil, and on
-    the first view the tubule is drawn in the order the fluid meets the segments.
+  - *Paper and pencil.* The page has the tooth of paper (a grain so slight it is felt more than
+    seen). What is drawn, the nephron, is drawn as a pencil study: the outline is found in two
+    passes, the line wanders a little, and tone is hatched over a pale wash, darker with the
+    value; a segment without data keeps a broken outline and stays empty. What is measured is
+    drawn along a ruler: the lines of every chart and the rules of the page have the texture
+    of graphite, and their position is exact (data is never displaced). Charts sit on the
+    sheet, without a box of their own. On the first view the tubule is drawn in the order the
+    fluid meets the segments.
   - *The sidebar map is a control.* A click on a segment selects it; the long loop is drawn to
     the depth of the selected juxtamedullary nephron.
   - *The address carries the selection.* The URL of a page always holds what the page shows

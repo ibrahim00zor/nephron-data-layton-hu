@@ -14,6 +14,11 @@ every part that can be clicked is an <a class="nd-go"> with a real address (see 
 and events.py answers those links in place. `cards(...)` makes the small cards that
 events.py shows beside the pointer.
 
+The plate is drawn the way a pencil study is: the outline is found in two passes (a looser
+one under the firmer one), the line wanders slightly, and tone is hatched over a pale wash,
+the hatching growing darker with the value. A segment without data keeps a broken outline
+and stays empty.
+
 The drawing is a schematic, not anatomy to scale. It follows the layout of the model:
 the superficial nephron has a short loop that turns at the outer-inner medullary boundary
 (no LDL, no LAL); the collecting duct (CCD, OMCD, IMCD) is shared by all nephrons. The
@@ -21,7 +26,7 @@ model has no vasculature, so none is drawn.
 """
 import html
 
-from style import ACCENT, FAINT, INK, INK_SOFT, MONO, MUTED, PAPER, RULE, SERIF
+from style import ACCENT, FAINT, GRAPHITE, INK, INK_SOFT, MONO, MUTED, PAPER, RULE, SERIF
 
 # ============================================================
 #  Geometry (SVG user units; y grows downward)
@@ -125,6 +130,14 @@ def tint(value):
     return SCALE[-1][1]
 
 
+def _level(value):
+    """Grey level (for a mask) of the hatching at a value: white is full hatching, black none."""
+    lo, hi = SCALE[0][0], SCALE[-1][0]
+    t = min(max((value - lo) / (hi - lo), 0.0), 1.0)
+    g = round(255 * (0.05 + 0.95 * t))
+    return f"rgb({g},{g},{g})"
+
+
 def _usable(pair):
     """A (inlet, outlet) pair that can be drawn: both present, finite and not negative."""
     if not pair:
@@ -157,6 +170,8 @@ def _styles():
 .nd-plate .nd-code.nd-pinned {{ fill: {ACCENT}; stroke: none; }}
 /* while something is pointed at, the rest of the tubule steps back */
 .nd-plate svg:has([data-seg]:hover) [data-part] {{ opacity: 0.28; }}
+.nd-plate .nd-ghost {{ transition: opacity .16s; }}
+.nd-plate svg:has([data-seg]:hover) .nd-ghost {{ opacity: 0.08; }}
 .nd-where a {{ cursor: pointer; }}
 .nd-where .nd-loc {{ transition: stroke .15s; }}
 .nd-where a:hover .nd-loc {{ stroke: {ACCENT}; }}
@@ -211,27 +226,38 @@ _HIT = "fill='none' stroke='transparent' pointer-events='stroke'"
 REACH = 30      # width of that area around a segment of the plate
 
 
-def _tube(code, fill, delay=None, pinned=False):
-    seg = SEGMENTS[code]
+def _tube(code, pair, delay=None, pinned=False):
+    """One segment: its outline, the paper inside it, and its tone (a pale wash and hatching
+    over it). Returns (outline, paper, tone, hatching); without data the outline is broken
+    and there is no tone."""
+    seg, known = SEGMENTS[code], _usable(pair)
     mark = " nd-pinned" if pinned else ""
+    drawn = delay is not None and known          # a broken outline is not drawn in
     draw = f" pathLength='1' class='nd-wall nd-draw{mark}' style='animation-delay:{delay:.2f}s'" \
-        if delay is not None else f" class='nd-wall{mark}'"
-    fade = f" class='nd-fade' style='animation-delay:{delay + 0.3:.2f}s'" if delay is not None else ""
-    return (f"<path d='{seg['d']}' data-part='{code}' fill='none' stroke='{INK}' "
-            f"stroke-width='{seg['w'] + (0.8 if pinned else 0):g}' "
-            f"stroke-linecap='round' stroke-linejoin='round'{draw}/>",
-            f"<path d='{seg['d']}' data-part='{code}' fill='none' stroke='{fill}' "
-            f"stroke-width='{seg['w'] - WALL:g}' stroke-linejoin='round'{fade}/>")
+        if drawn else f" class='nd-wall{mark}'"
+    fade = f" class='nd-fade' style='animation-delay:{delay + 0.3:.2f}s'" if drawn else ""
+    broken = "" if known else " stroke-dasharray='5 3.5'"
+    inner = f"d='{seg['d']}' fill='none' stroke-width='{seg['w'] - WALL:g}' stroke-linejoin='round'"
+    outline = (f"<path d='{seg['d']}' data-part='{code}' fill='none' stroke='{GRAPHITE}' "
+               f"stroke-width='{seg['w'] + (0.8 if pinned else 0):g}' "
+               f"stroke-linecap='{'round' if known else 'butt'}' stroke-linejoin='round'{broken}{draw}/>")
+    paper = f"<path {inner} stroke='{PAPER}'/>"
+    if not known:
+        return outline, paper, "", ""
+    tone = f"<path {inner} data-part='{code}' stroke='url(#nd-t-{code})' opacity='0.62'{fade}/>"
+    hatching = f"<path {inner} data-part='{code}' stroke='url(#nd-hatch)' mask='url(#nd-m-{code})'{fade}/>"
+    return outline, paper, tone, hatching
 
 
 def _glomerulus(fill):
     cx, cy, r = GLOMERULUS
     tuft = "".join(
-        f"<circle cx='{cx + dx}' cy='{cy + dy}' r='6.4' fill='{PAPER}' stroke='{INK_SOFT}' stroke-width='0.8'/>"
+        f"<circle cx='{cx + dx}' cy='{cy + dy}' r='6.4' fill='{PAPER}' stroke='{GRAPHITE}' stroke-width='0.8'/>"
         for dx, dy in ((-6, -5), (5, -7), (8, 4), (-2, 8), (-9, 3), (0, 0))
     )
-    return (f"<g data-part='glom'><circle cx='{cx}' cy='{cy}' r='{r}' class='nd-wall' data-part='glom' "
-            f"fill='{fill}' stroke='{INK}' stroke-width='1.2'/>{tuft}</g>")
+    return (f"<g data-part='glom'><circle cx='{cx}' cy='{cy}' r='{r}' fill='{PAPER}'/>"
+            f"<circle cx='{cx}' cy='{cy}' r='{r}' class='nd-wall' data-part='glom' "
+            f"fill='{fill}' fill-opacity='0.62' stroke='{GRAPHITE}' stroke-width='1.2'/>{tuft}</g>")
 
 
 def _link(href, body, attrs=""):
@@ -264,61 +290,90 @@ def plate(values, unit="mOsm", links=None, loops=None, pinned=None, animate=True
            f"aria-label='Schematic of the nephron with model output per segment' "
            f"style='width:100%;height:auto;display:block;'>"]
 
-    # ---- definitions: tints, hatching, the open end at the papilla, the pencil
+    # ---- definitions: the tone of each segment, the hatch, the open end, the pencil
+    lo, hi = SCALE[0][0], SCALE[-1][0]
+    area = f"x='{x0}' y='{y0}' width='{w}' height='{h}'"
     out.append("<defs>")
     for code, seg in SEGMENTS.items():
         if _usable(values.get(code)):
             (x1, y1), (x2, y2) = seg["ends"]
             a, b = values[code]
-            out.append(f"<linearGradient id='nd-t-{code}' gradientUnits='userSpaceOnUse' "
-                       f"x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}'>"
+            along = f"gradientUnits='userSpaceOnUse' x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}'"
+            out.append(f"<linearGradient id='nd-t-{code}' {along}>"
                        f"<stop offset='0' stop-color='{tint(a)}'/><stop offset='1' stop-color='{tint(b)}'/>"
                        f"</linearGradient>")
-    lo, hi = SCALE[0][0], SCALE[-1][0]
+            # the hatching is let through in proportion to the value, from inlet to outlet
+            out.append(f"<linearGradient id='nd-g-{code}' {along}>"
+                       f"<stop offset='0' stop-color='{_level(a)}'/><stop offset='1' stop-color='{_level(b)}'/>"
+                       f"</linearGradient>")
+            out.append(f"<mask id='nd-m-{code}' maskUnits='userSpaceOnUse' {area}>"
+                       f"<rect {area} fill='url(#nd-g-{code})'/></mask>")
     stops = "".join(f"<stop offset='{(v - lo) / (hi - lo):.3f}' stop-color='{c}'/>" for v, c in SCALE)
     out.append(f"<linearGradient id='nd-t-scale' x1='0' y1='0' x2='1' y2='0'>{stops}</linearGradient>")
-    out.append("<pattern id='nd-t-none' width='4' height='4' patternUnits='userSpaceOnUse' "
-               f"patternTransform='rotate(45)'><rect width='4' height='4' fill='{PAPER}'/>"
-               f"<line x1='0' y1='0' x2='0' y2='4' stroke='{FAINT}' stroke-width='1'/></pattern>")
+    out.append(f"<linearGradient id='nd-g-scale' x1='0' y1='0' x2='1' y2='0'>"
+               f"<stop offset='0' stop-color='{_level(lo)}'/><stop offset='1' stop-color='{_level(hi)}'/>"
+               f"</linearGradient>")
+    out.append("<mask id='nd-m-scale' maskContentUnits='objectBoundingBox'>"
+               "<rect width='1' height='1' fill='url(#nd-g-scale)'/></mask>")
+    out.append("<pattern id='nd-hatch' width='3.3' height='3.3' patternUnits='userSpaceOnUse' "
+               f"patternTransform='rotate(52)'><line x1='0' y1='0' x2='0' y2='3.3' stroke='{GRAPHITE}' "
+               f"stroke-width='0.8'/></pattern>")
     out.append(f"<clipPath id='nd-t-open'><rect x='{x0}' y='{y0}' width='{w}' height='{PAPILLA - y0}'/></clipPath>")
-    # a slight unevenness of the line, as from a pencil on paper
-    out.append(f"<filter id='nd-pencil' filterUnits='userSpaceOnUse' x='{x0}' y='{y0}' width='{w}' height='{h}'>"
-               "<feTurbulence type='fractalNoise' baseFrequency='0.035' numOctaves='2' seed='11' result='grain'/>"
-               "<feDisplacementMap in='SourceGraphic' in2='grain' scale='1.7' "
+    # the hand: the line wanders a little (firm pass), and a little more (the looser pass under it)
+    out.append(f"<filter id='nd-pencil' filterUnits='userSpaceOnUse' {area}>"
+               "<feTurbulence type='fractalNoise' baseFrequency='0.021' numOctaves='3' seed='4' result='hand'/>"
+               "<feDisplacementMap in='SourceGraphic' in2='hand' scale='2.8' "
                "xChannelSelector='R' yChannelSelector='G'/></filter>")
+    out.append(f"<filter id='nd-pencil-2' filterUnits='userSpaceOnUse' {area}>"
+               "<feTurbulence type='fractalNoise' baseFrequency='0.03' numOctaves='2' seed='23' result='hand'/>"
+               "<feDisplacementMap in='SourceGraphic' in2='hand' scale='4.4' "
+               "xChannelSelector='G' yChannelSelector='R'/></filter>")
+    # the tooth of the paper: graphite does not cover it evenly
+    out.append(f"<filter id='nd-tooth' filterUnits='userSpaceOnUse' {area} color-interpolation-filters='sRGB'>"
+               "<feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='9' result='grain'/>"
+               "<feColorMatrix in='grain' type='matrix' "
+               "values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.3 1.52' result='tooth'/>"
+               "<feComposite in='SourceGraphic' in2='tooth' operator='in'/></filter>")
     out.append("</defs>")
 
-    # ---- zones
-    zone = (f"font-family=\"{MONO}\" font-size='8.5' letter-spacing='1.6' fill='{FAINT}'")
-    for y, name in ((y0, "CORTEX"), (CORTEX_END, "OUTER MEDULLA"), (OUTER_END, "INNER MEDULLA")):
+    # ---- zones: ruled in pencil, named quietly
+    zone = f"font-family=\"{SERIF}\" font-style='italic' font-size='10.5' fill='{MUTED}'"
+    for y, name in ((y0, "cortex"), (CORTEX_END, "outer medulla"), (OUTER_END, "inner medulla")):
         if y != y0:
-            out.append(f"<line x1='{x0 + 6}' y1='{y}' x2='{right - 6}' y2='{y}' stroke='{RULE}' "
-                       f"stroke-width='1' stroke-dasharray='2 4'/>")
+            out.append(f"<line x1='{x0 + 4}' y1='{y}' x2='{right - 4}' y2='{y + 1.2}' stroke='{GRAPHITE}' "
+                       f"stroke-width='0.7' opacity='0.42' filter='url(#nd-pencil-2)'/>")
         out.append(f"<text x='{x0 + 6}' y='{y + 15}' {zone}>{name}</text>")
 
-    # ---- everything drawn in ink goes through the pencil
+    # ---- the drawing. Outlines first, then the glomerulus, then the lumens on top, so that
+    # every joint is open and the capsule opens into the proximal tubule. The duct is left
+    # open at the papilla (the outlines are clipped there).
+    outlines, papers, tones, hatchings = [], [], [], []
+    for index, code in enumerate(ORDER):
+        parts = _tube(code, values.get(code), delay=0.15 + 0.2 * index if animate else None,
+                      pinned=code == pinned)
+        for group, part in zip((outlines, papers, tones, hatchings), parts):
+            group.append(part)
+    known = [code for code in ORDER if _usable(values.get(code))]
+    loose = "".join(f"<path d='{SEGMENTS[code]['d']}' fill='none' stroke='{GRAPHITE}' "
+                    f"stroke-width='{SEGMENTS[code]['w']}' stroke-linecap='round' stroke-linejoin='round'/>"
+                    for code in known)
+    # the looser pass: the line as it was first looked for
+    out.append(f"<g class='nd-ghost' opacity='0.3' filter='url(#nd-pencil-2)' clip-path='url(#nd-t-open)'>"
+               f"<g filter='url(#nd-tooth)'>{loose}</g></g>")
     out.append("<g filter='url(#nd-pencil)'>")
+    out.append("<g filter='url(#nd-tooth)'>")
     for index, loop in enumerate(loops):
         for d in _loop(_half_width(index, len(loops)), loop["depth"]):
             out.append(f"<path d='{d}' data-part='loops' class='nd-wall' fill='none' "
-                       f"stroke='{FAINT}' stroke-width='0.9'/>")
-
-    # the tubule: all walls first, then the glomerulus, then all lumens on top, so that every
-    # joint is open and the capsule opens into the proximal tubule. The duct is left open
-    # at the papilla (the walls are clipped there).
-    walls, lumens = [], []
-    for index, code in enumerate(ORDER):
-        fill = f"url(#nd-t-{code})" if _usable(values.get(code)) else "url(#nd-t-none)"
-        wall, lumen = _tube(code, fill, delay=0.15 + 0.2 * index if animate else None, pinned=code == pinned)
-        walls.append(wall)
-        lumens.append(lumen)
+                       f"stroke='{GRAPHITE}' stroke-opacity='0.5' stroke-width='0.85'/>")
+    out.append(f"<g clip-path='url(#nd-t-open)'>{''.join(outlines)}</g></g>")
     first = values.get("PT")
-    out.append(f"<g clip-path='url(#nd-t-open)'>{''.join(walls)}</g>")
     out.append(_glomerulus(tint(first[0]) if _usable(first) else PAPER))
-    out += lumens
+    out += papers + tones
+    out.append(f"<g filter='url(#nd-tooth)'>{''.join(hatchings)}")
     # macula densa: the plaque where the thick limb passes its own glomerulus
     out.append(f"<line x1='262.6' y1='92' x2='262.6' y2='110' data-part='md' class='nd-wall' "
-               f"stroke='{INK}' stroke-width='2.8'/>")
+               f"stroke='{GRAPHITE}' stroke-width='2.8'/></g>")
     out.append("</g>")
 
     italic = f"font-family=\"{SERIF}\" font-style='italic' fill='{MUTED}'"
@@ -358,12 +413,14 @@ def plate(values, unit="mOsm", links=None, loops=None, pinned=None, animate=True
         return bx + bw * (min(max(value, lo), hi) - lo) / (hi - lo)
 
     tick = f"font-family=\"{MONO}\" font-size='8.5' fill='{MUTED}' text-anchor='middle'"
-    out.append(f"<rect x='{bx}' y='{by}' width='{bw}' height='6' fill='url(#nd-t-scale)' "
-               f"stroke='{INK_SOFT}' stroke-width='0.6'/>")
+    out.append(f"<rect x='{bx}' y='{by}' width='{bw}' height='7' fill='url(#nd-t-scale)' fill-opacity='0.62'/>"
+               f"<rect x='{bx}' y='{by}' width='{bw}' height='7' fill='url(#nd-hatch)' mask='url(#nd-m-scale)'/>"
+               f"<rect x='{bx}' y='{by}' width='{bw}' height='7' fill='none' stroke='{GRAPHITE}' "
+               f"stroke-width='0.7'/>")
     for v in (100, 300, 700):
-        out.append(f"<line x1='{at(v):.1f}' y1='{by + 6}' x2='{at(v):.1f}' y2='{by + 9}' "
-                   f"stroke='{INK_SOFT}' stroke-width='0.6'/>")
-        out.append(f"<text x='{at(v):.1f}' y='{by + 18}' {tick}>{v}</text>")
+        out.append(f"<line x1='{at(v):.1f}' y1='{by + 7}' x2='{at(v):.1f}' y2='{by + 10}' "
+                   f"stroke='{GRAPHITE}' stroke-width='0.6'/>")
+        out.append(f"<text x='{at(v):.1f}' y='{by + 19}' {tick}>{v}</text>")
     out.append(f"<text x='{bx}' y='{by - 9}' font-family=\"{MONO}\" font-size='8.5' letter-spacing='1' "
                f"fill='{MUTED}'>{html.escape(unit)}</text>")
 
