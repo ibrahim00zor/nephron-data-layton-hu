@@ -23,15 +23,27 @@ NEPHS = {'sup','jux1','jux2','jux3','jux4','jux5'}
 TRANSPORTERS = {'NaKATPase','NHE3','KCC4','NKCC2A','NKCC2B','NKCC2F','HKATPase','AE1',
                 'HATPase','Pendrin','ENaC','SGLT2','SGLT1','NHE1','NCC','GLUT2','GLUT1','NKCC1'}
 
-UNITS = {'con':'mM', 'flow':'pmol/min', 'water_volume':'nl/min', 'flux':'pmol/min',
+# 'flux' rows are written by the model in its internal units (output.py does not scale them,
+# unlike flows). One model unit = href*Cref = 600 pmol/(min*cm2) of luminal surface; diameter
+# and length are in cm. Both are verified by mass balance in kod/transport.py.
+UNITS = {'con':'mM', 'flow':'pmol/min', 'water_volume':'nl/min',
+         'flux':'model flux unit (x600 = pmol/min/cm2)',
          'osmolality':'mOsm', 'pH':'', 'potential':'mV',
-         'pressure':'unknown', 'diameter':'unknown', 'length':'unknown'}
+         'pressure':'unknown', 'diameter':'cm', 'length':'cm'}
+
+# Compartment order used by the model (output.py); a two-digit membrane id in a file name,
+# e.g. Na14, means "from compartment 1 to compartment 4" = Cell-LIS.
+COMPARTMENTS = ['Lumen', 'Cell', 'ICA', 'ICB', 'LIS', 'Bath']
 
 # Segment grid (number of points) sizes — fixed by the model. Everything else is 200.
 SEGMENT_GRID = {'PT': 181, 'S3': 20}
 DEFAULT_GRID = 200
 
 # --- Multi-membrane flux files ---
+# The model has TWO ways of writing a transporter that sits on several membranes:
+#  (a) one file per membrane, with the membrane id in the file name (NaKATPase_Na14, _Na15, ...)
+#      -> handled by `membrane_label()`;
+#  (b) one file for all membranes, interleaved, with no id in the name -> handled below.
 # Some transporters (AE1, HATPase, HKATPase, NHE1) belong to more than one cell membrane
 # in a segment; the model writes their fluxes into a SINGLE file, WITHOUT a membrane id in
 # the file name, in append mode. Result: an N*grid-row file where the data is NOT
@@ -64,6 +76,15 @@ def split_solute_membid(token):
     return token, ''
 
 
+def membrane_label(membid):
+    """ '14' -> 'Cell-LIS' ; '' or anything unexpected -> None """
+    if len(membid) == 2 and membid.isdigit():
+        a, b = int(membid[0]), int(membid[1])
+        if a < len(COMPARTMENTS) and b < len(COMPARTMENTS):
+            return f"{COMPARTMENTS[a]}-{COMPARTMENTS[b]}"
+    return None
+
+
 def parse_filename(stem):
     """File name (without extension) -> record dict. None if unrecognized."""
     parts = stem.split('_')
@@ -78,7 +99,7 @@ def parse_filename(stem):
         nephron = 'merged'
 
     rec = dict(sex=sex, species=species, segment=segment, nephron=nephron,
-               solute=None, compartment=None, transporter=None)
+               solute=None, compartment=None, transporter=None, membrane=None)
     if not rest:
         return None
     head = rest[0]
@@ -99,7 +120,8 @@ def parse_filename(stem):
             rec['solute'], _ = split_solute_membid(rest[1])
         elif head in TRANSPORTERS:
             rec['variable'] = 'flux'; rec['transporter'] = head
-            rec['solute'], _ = split_solute_membid(rest[1])
+            rec['solute'], membid = split_solute_membid(rest[1])
+            rec['membrane'] = membrane_label(membid)
         else:
             return None
     except IndexError:
@@ -151,7 +173,7 @@ def load_scenario(scenario_dir, condition):
                 # interleaved: membrane m = every k-th value
                 frames.append(make_frame(rec, condition, values[m::k], labels[m]))
         else:
-            frames.append(make_frame(rec, condition, values, None))
+            frames.append(make_frame(rec, condition, values, rec['membrane']))
     return (pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()), unknown, suspicious
 
 
