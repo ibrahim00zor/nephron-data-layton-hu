@@ -65,6 +65,14 @@ st.markdown("""
   across 6 scenarios.</span>
 </div>
 <div style="border:1px solid #bfdbfe;background:#eff6ff;padding:12px 14px;border-radius:6px;margin-bottom:10px;">
+  <b style="color:#1e40af;">Some transporter profiles share a key in the current dataset</b><br>
+  <span style="color:#374151;">Na/K-ATPase, GLUT1/2 and KCC4 sit on several basolateral membranes
+  (2 to 6, depending on the segment). The model writes one file per membrane; the current Parquet
+  stores those profiles under one key, without the membrane label. The app sums them — the
+  transporter's total basolateral flux — instead of plotting them as one line. The loader now keeps
+  the membrane label, so a rebuilt dataset will carry it; the values themselves are unaffected.</span>
+</div>
+<div style="border:1px solid #bfdbfe;background:#eff6ff;padding:12px 14px;border-radius:6px;margin-bottom:10px;">
   <b style="color:#1e40af;">Scenario library 6/10 successful</b><br>
   <span style="color:#374151;">4 scenarios (F_diab_severe, F_ACE, F_obese, F_UNX) gave a numerical
   convergence failure in the Newton solver (np.exp overflow). This is a <b>known limit</b> of

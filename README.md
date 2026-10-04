@@ -137,6 +137,10 @@ transporter flux density pmol/(min·cm²) (1 model unit = 600; verified by mass 
 
 ---
 
+## Changelog
+
+See [`CHANGELOG.md`](CHANGELOG.md).
+
 ## License
 
 Dual-licensed (academic standard):

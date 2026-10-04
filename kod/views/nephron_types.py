@@ -10,7 +10,7 @@ scenario = nav.get("scenario")
 
 st.markdown("## Compare Nephron Types")
 st.caption("For the same segment + solute + compartment, sup and jux1–5 are overlaid. "
-           "Deep nephrons (jux5) descend furthest into the medulla — the gradient arises from them.")
+           "Deep nephrons (jux5) descend furthest into the medulla.")
 
 segs, solutes = options()
 compare_segs = [s for s in segs if s not in CD_SEGMENTS]
