@@ -109,6 +109,7 @@ transporter flux density pmol/(min·cm²) (1 model unit = 600; verified by mass 
 │   ├── ui_kit.py          # shared: frame, sidebar, queries, chart helper, citation footer
 │   ├── style.py           # the look: palette, chart template, stylesheet
 │   ├── nephron_figure.py  # the nephron drawing: Home figure, sidebar locator, logo
+│   ├── events.py          # clicks, pointer cards and keys, answered in place (v2 component)
 │   ├── clinical_cases.py  # which scenario/focus each clinical case is built on
 │   ├── transport.py       # transporter fluxes: verified units, membranes, mass balance
 │   ├── education.py       # educational content (segment/transporter/solute)

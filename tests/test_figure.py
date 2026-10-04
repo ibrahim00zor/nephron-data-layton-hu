@@ -59,19 +59,36 @@ def test_figure_covers_the_segments_of_the_dataset():
     assert set(figure.LABELS) == set(figure.SEGMENTS)
 
 
-def test_plate_links_names_and_loops():
+def test_plate_links_loops_and_selection():
     loops = [{"nephron": name, "depth": (i + 1) / 5, "value": 600 + 20 * i}
              for i, name in enumerate(figure.LOOPS)]
-    links = {code: f"segment_profile?segment={code}&scenario=F_HT" for code in figure.ORDER}
-    links["jux3"] = "segment_profile?segment=LDL&nephron=jux3"
-    svg = figure.plate(VALUES, names={"mTAL": "Medullary Thick Ascending Limb"}, links=links,
-                       loops=loops, notes={"glom": "fluid enters at 100 nl/min", "md": "Na 26 mM"})
+    links = {code: f"./?segment={code}&scenario=F_HT" for code in figure.ORDER}
+    links["loops"] = "nephron_types?segment=LDL&scenario=F_HT"
+    svg = figure.plate(VALUES, links=links, loops=loops, pinned="mTAL")
     _parse(svg)                                   # '&' in links must be escaped
+    assert svg.count("class='nd-go'") == len(figure.ORDER) + 1     # every segment, and the loops
     assert svg.count("target='_self'") == len(figure.ORDER) + 1
-    assert "Medullary Thick Ascending Limb" in svg and "580 → 253 mOsm" in svg
-    assert "640 mOsm at the bend" in svg and "fluid enters at 100 nl/min" in svg
-    for name in figure.LOOPS:                     # every loop can be pointed at
-        assert f"data-seg='{name}'" in svg, name
+    assert svg.count("nd-pinned") == 2            # the wall and the label of the selected segment
+    assert "data-seg='loops'" in svg and "data-seg='glom'" in svg and "data-seg='md'" in svg
+    assert svg.count("data-part='loops'") == 2 * len(loops)        # two limbs per loop
+    # small targets are drawn after (on top of) the wide ones, or they could not be reached
+    assert svg.index("data-seg='md'") > svg.index("data-seg='DCT'")
+    assert svg.index("data-seg='glom'") > svg.index("data-seg='PT'")
+
+
+def test_cards_say_what_they_are_given():
+    html = figure.cards({
+        "mTAL": {"head": "mTAL", "name": "Medullary Thick Ascending Limb",
+                 "rows": [("osmolality", "580 → 253 mOsm"), ("Na⁺", "262 → 102 mM")],
+                 "series": [580, 500, 400, 300, 253], "hint": "click to select"},
+        "glom": {"head": "Glomerulus", "name": "Fluid enters at 100 nl/min & 298 mOsm."},
+        "bad":  {"head": "IMCD", "rows": [("status", "did not converge")], "series": [float("nan"), None]},
+    })
+    _parse(f"<div>{html}</div>")                  # '&' in a note must be escaped
+    assert html.count("class='nd-card'") == 3 and "data-for='mTAL'" in html
+    assert "580 → 253 mOsm" in html and "Medullary Thick Ascending Limb" in html
+    assert html.count("<polyline") == 1           # a line only where there are numbers to draw
+    assert figure.sparkline([1.0]) == "" and figure.sparkline([]) == ""
 
 
 def test_locator_links_and_struck_segments():
@@ -86,7 +103,8 @@ def test_locator_links_and_struck_segments():
 
 
 def test_hover_styles_cover_everything_that_can_be_pointed_at():
-    for key in list(figure.SEGMENTS) + list(figure.LOOPS) + ["glom", "md"]:
+    assert set(figure.HOT) == set(figure.SEGMENTS) | {"loops", "glom", "md"}
+    for key in figure.HOT:
         assert f"[data-seg='{key}']:hover" in figure.STYLES, key
 
 

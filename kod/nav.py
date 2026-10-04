@@ -14,7 +14,7 @@ Two ideas live here:
    `select()` / `multiselect()`, and `go()` jumps to another page with a chosen context.
 """
 import os
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode
 
 import streamlit as st
 
@@ -224,22 +224,44 @@ def href(page=None, **changes):
     return url_path(page or current_page()) + (f"?{params}" if params else "")
 
 
+def _apply(fields, allowed, reset):
+    """Put the fields of an address into the selection. Only values listed in `allowed`
+    are accepted. With `reset`, a field the address does not mention goes back to its
+    default (an address says everything about a view; what it leaves out is the default)."""
+    for name in URL_FIELDS:
+        raw = fields.get(name)
+        if isinstance(DEFAULTS[name], list):
+            values = [v for v in raw.split(",") if v in allowed.get(name, ())] if raw else []
+            if values:
+                put(**{name: values})
+                continue
+        elif raw in allowed.get(name, ()):
+            put(**{name: raw})
+            continue
+        if reset:
+            put(**{name: _default(name)})
+
+
 def read_url(allowed):
     """Once per session: take the selection from the address. `allowed` lists the values
     each field may take; anything else in the address is ignored."""
     if st.session_state.get(_URL_READ):
         return
     st.session_state[_URL_READ] = True
-    for name in URL_FIELDS:
-        raw = st.query_params.get(name)
-        if raw is None:
-            continue
-        if isinstance(DEFAULTS[name], list):
-            values = [v for v in raw.split(",") if v in allowed.get(name, ())]
-            if values:
-                put(**{name: values})
-        elif raw in allowed.get(name, ()):
-            put(**{name: raw})
+    _apply({name: st.query_params.get(name) for name in URL_FIELDS}, allowed, reset=False)
+
+
+def follow(address, allowed):
+    """Apply the address of an internal link ("page?field=value&...") to this session, as
+    opening it would. Returns the page it leads to (None if the address names no page)."""
+    name, _, params = str(address).partition("?")
+    pages = {url_path(page).strip("./"): page for page in PAGES}
+    page = pages.get(name.strip("./"))
+    if page is None:
+        return None
+    _apply(dict(parse_qsl(params)), allowed, reset=True)
+    st.session_state.pop(_ORIGIN_KEY, None)
+    return page
 
 
 def write_url():

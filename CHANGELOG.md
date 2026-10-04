@@ -85,11 +85,13 @@ Requires `streamlit>=1.52`. The dataset (`veri/nephron_veritabani.parquet`) is u
 - The Streamlit "Deploy" button and developer menu are hidden (`toolbarMode = "minimal"`).
 
 - **Details that reward a closer look.**
-  - *The figure answers.* Pointing at a segment of Fig. 1 marks it, gives its full name and its
-    inlet and outlet values under the figure, and shows them on the scale; a click opens that
-    segment in Segment Profile. The five long loops of the juxtamedullary nephrons are drawn to
-    the relative depths the model gives them and can be pointed at and opened too; so can the
-    glomerulus and the macula densa. What is under the pointer is also marked on the sidebar map.
+  - *The figure answers.* Pointing at a part of Fig. 1 keeps it and lets the rest step back,
+    and shows a card beside the pointer: the full name, the osmolality profile along the
+    segment as a small line, and its inlet and outlet values. A click selects the segment in
+    place (no reload): it stays marked, and a reading under the figure shows its profile
+    against the interstitium, with ways on to Segment Profile and Transporters. The long loops
+    of the juxtamedullary nephrons (one target, five bend values), the glomerulus and the
+    macula densa can be pointed at too. The areas to point at are wide (30 px around a line).
   - *The figure is drawn.* The lines pass through a slight unevenness, as from a pencil, and on
     the first view the tubule is drawn in the order the fluid meets the segments.
   - *The sidebar map is a control.* A click on a segment selects it; the long loop is drawn to
@@ -97,6 +99,10 @@ Requires `streamlit>=1.52`. The dataset (`veri/nephron_veritabani.parquet`) is u
   - *The address carries the selection.* The URL of a page always holds what the page shows
     (scenario, solute, segment, nephron, compartment, compared scenarios, case), so a copied
     address is a link to exactly that view. Values that do not exist are ignored.
+  - *Links inside the app are answered in place.* A click on the figure, on the sidebar map
+    or on a "see it" link no longer starts a new session: one small listener
+    (`kod/events.py`, a Streamlit v2 component) passes the address to Python, which applies it
+    as opening the link would. The links stay real addresses (new tab, copy, no JavaScript).
   - *Keys.* `[` and `]` step along the nephron, `?` shows the keys. The mark beside a page
     title is a pilcrow; a click copies the link to the view.
   - *Validation explains itself.* A row opens to say exactly what the check reads from the

@@ -8,9 +8,11 @@ with the long loops of the juxtamedullary nephrons drawn in hairline below it) g
 - locator(...) : a small map for the sidebar that marks the selected segment;
 - mark(...)    : the logo and the favicon.
 
-Everything is plain SVG built as a string: no JavaScript, nothing to load. What the
-drawings do when the pointer is over them is CSS (`STYLES`, written to the page once by
-ui_kit.apply_frame); what they do on a click is an ordinary link (see nav.href).
+Everything is plain SVG built as a string. How the drawings look under the pointer is CSS
+(`STYLES`, written to the page once by ui_kit.apply_frame). What they do is ordinary links:
+every part that can be clicked is an <a class="nd-go"> with a real address (see nav.href),
+and events.py answers those links in place. `cards(...)` makes the small cards that
+events.py shows beside the pointer.
 
 The drawing is a schematic, not anatomy to scale. It follows the layout of the model:
 the superficial nephron has a short loop that turns at the outer-inner medullary boundary
@@ -135,42 +137,66 @@ def _number(value):
 
 
 # ============================================================
-#  Behaviour under the pointer (CSS, written to the page once)
+#  How the drawings look under the pointer (CSS, written to the page once)
 # ============================================================
+HOT = list(SEGMENTS) + ["loops", "glom", "md"]      # everything on the plate that can be pointed at
+
+
 def _styles():
-    hot = list(SEGMENTS) + list(LOOPS) + ["glom", "md"]
     rules = [f"""
 /* ---------- the plate ---------- */
+.nd-plate {{ position: relative; }}
 .nd-plate a {{ text-decoration: none; cursor: pointer; }}
 .nd-plate .nd-hot {{ cursor: help; }}
-.nd-plate .nd-wall, .nd-plate .nd-code {{ transition: stroke .18s, fill .18s; }}
-.nd-plate .nd-read, .nd-plate .nd-mark {{ opacity: 0; transition: opacity .18s; pointer-events: none; }}
-.nd-plate .nd-hint {{ transition: opacity .18s; }}
-.nd-plate svg:has(.nd-seg:hover, .nd-hot:hover) .nd-hint {{ opacity: 0; }}
-.nd-plate a.nd-seg:hover .nd-code {{ fill: {ACCENT}; }}
+.nd-plate [data-part], .nd-plate .nd-wall, .nd-plate .nd-code {{
+  transition: opacity .16s, stroke .16s, stroke-width .16s, fill .16s;
+}}
+.nd-plate .nd-mark {{ opacity: 0; transition: opacity .16s; pointer-events: none; }}
+.nd-plate [data-seg]:hover .nd-code {{ fill: {ACCENT}; }}
+.nd-plate .nd-pinned {{ stroke: {ACCENT}; }}
+.nd-plate .nd-code.nd-pinned {{ fill: {ACCENT}; stroke: none; }}
+/* while something is pointed at, the rest of the tubule steps back */
+.nd-plate svg:has([data-seg]:hover) [data-part] {{ opacity: 0.28; }}
 .nd-where a {{ cursor: pointer; }}
 .nd-where .nd-loc {{ transition: stroke .15s; }}
 .nd-where a:hover .nd-loc {{ stroke: {ACCENT}; }}
 
+/* the card beside the pointer (placed by events.py) */
+.nd-card {{
+  display: none; position: fixed; z-index: 999990; pointer-events: none; width: 15.5rem;
+  background: {PAPER}; border: 1px solid {INK_SOFT}; box-shadow: 3px 3px 0 rgba(29, 27, 24, 0.10);
+  padding: 0.55rem 0.7rem 0.5rem; font-family: {SERIF}; color: {INK}; text-align: left;
+}}
+.nd-card.on {{ display: block; }}
+.nd-card .head {{ font-weight: 600; font-size: 1rem; line-height: 1.2; }}
+.nd-card .name {{ font-style: italic; color: {MUTED}; font-size: 0.86rem; line-height: 1.3; margin-bottom: 0.3rem; }}
+.nd-card dl {{ display: grid; grid-template-columns: auto 1fr; gap: 0.05rem 0.6rem; margin: 0.25rem 0 0.1rem; }}
+.nd-card dt {{ font-size: 0.8rem; color: {MUTED}; }}
+.nd-card dd {{ margin: 0; font-family: {MONO}; font-size: 0.76rem; color: {INK}; text-align: right; }}
+.nd-card svg {{ display: block; margin: 0.3rem 0 0.1rem; }}
+.nd-card .hint {{
+  font-family: {MONO}; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: {FAINT}; margin-top: 0.35rem; border-top: 1px solid {RULE}; padding-top: 0.3rem;
+}}
+
 /* the plate is drawn in, in the order the fluid meets the segments */
 @keyframes nd-draw {{ from {{ stroke-dashoffset: 1; opacity: 0; }} 8% {{ opacity: 1; }} to {{ stroke-dashoffset: 0; opacity: 1; }} }}
 @keyframes nd-fade {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
-.nd-plate .nd-draw {{ stroke-dasharray: 1; animation: nd-draw .5s ease-out both; }}
-.nd-plate .nd-fade {{ animation: nd-fade .5s ease-out both; }}
+.nd-plate .nd-draw {{ stroke-dasharray: 1; animation: nd-draw .5s ease-out backwards; }}
+.nd-plate .nd-fade {{ animation: nd-fade .5s ease-out backwards; }}
 @media (prefers-reduced-motion: reduce) {{
   .nd-plate .nd-draw, .nd-plate .nd-fade {{ animation: none; }}
 }}"""]
-    for code in hot:
-        rules.append(
-            f".nd-plate svg:has([data-seg='{code}']:hover) .nd-wall[data-wall='{code}'] {{ stroke: {ACCENT}; }}\n"
-            f".nd-plate svg:has([data-seg='{code}']:hover) [data-for='{code}'] {{ opacity: 1; }}")
+    for code in HOT:
+        here = f".nd-plate svg:has([data-seg='{code}']:hover)"
+        rules.append(f"{here} [data-part='{code}'] {{ opacity: 1; }}\n"
+                     f"{here} .nd-wall[data-part='{code}'] {{ stroke: {ACCENT}; }}\n"
+                     f"{here} [data-for='{code}'] {{ opacity: 1; }}")
     # what is under the pointer on the plate is also marked on the small map in the sidebar
-    for code in list(SEGMENTS) + list(GHOST):
+    for code in SEGMENTS:
         rules.append(f"body:has(.nd-plate [data-seg='{code}']:hover) .nd-where [data-loc='{code}'] "
                      f"{{ stroke: {ACCENT}; }}")
-    for nephron in LOOPS:
-        rules.append(f"body:has(.nd-plate [data-seg='{nephron}']:hover) .nd-where [data-loop] "
-                     f"{{ stroke: {ACCENT}; }}")
+    rules.append(f"body:has(.nd-plate [data-seg='loops']:hover) .nd-where [data-loop] {{ stroke: {ACCENT}; }}")
     return "<style>" + "\n".join(rules) + "</style>"
 
 
@@ -180,15 +206,22 @@ STYLES = _styles()
 # ============================================================
 #  Pieces shared by the drawings
 # ============================================================
-def _tube(code, fill, delay=None):
+# A wide, invisible stroke over a line: the area that can be pointed at and clicked.
+_HIT = "fill='none' stroke='transparent' pointer-events='stroke'"
+REACH = 30      # width of that area around a segment of the plate
+
+
+def _tube(code, fill, delay=None, pinned=False):
     seg = SEGMENTS[code]
-    draw = f" pathLength='1' class='nd-wall nd-draw' style='animation-delay:{delay:.2f}s'" if delay is not None \
-        else " class='nd-wall'"
+    mark = " nd-pinned" if pinned else ""
+    draw = f" pathLength='1' class='nd-wall nd-draw{mark}' style='animation-delay:{delay:.2f}s'" \
+        if delay is not None else f" class='nd-wall{mark}'"
     fade = f" class='nd-fade' style='animation-delay:{delay + 0.3:.2f}s'" if delay is not None else ""
-    return (f"<path d='{seg['d']}' data-wall='{code}' fill='none' stroke='{INK}' stroke-width='{seg['w']}' "
+    return (f"<path d='{seg['d']}' data-part='{code}' fill='none' stroke='{INK}' "
+            f"stroke-width='{seg['w'] + (0.8 if pinned else 0):g}' "
             f"stroke-linecap='round' stroke-linejoin='round'{draw}/>",
-            f"<path d='{seg['d']}' fill='none' stroke='{fill}' stroke-width='{seg['w'] - WALL:g}' "
-            f"stroke-linejoin='round'{fade}/>")
+            f"<path d='{seg['d']}' data-part='{code}' fill='none' stroke='{fill}' "
+            f"stroke-width='{seg['w'] - WALL:g}' stroke-linejoin='round'{fade}/>")
 
 
 def _glomerulus(fill):
@@ -197,37 +230,33 @@ def _glomerulus(fill):
         f"<circle cx='{cx + dx}' cy='{cy + dy}' r='6.4' fill='{PAPER}' stroke='{INK_SOFT}' stroke-width='0.8'/>"
         for dx, dy in ((-6, -5), (5, -7), (8, 4), (-2, 8), (-9, 3), (0, 0))
     )
-    return (f"<circle cx='{cx}' cy='{cy}' r='{r}' data-wall='glom' class='nd-wall' fill='{fill}' "
-            f"stroke='{INK}' stroke-width='1.2'/>{tuft}")
-
-
-# A wide, invisible stroke over a line: the area that can be pointed at and clicked.
-_HIT = "fill='none' stroke='transparent' pointer-events='stroke'"
+    return (f"<g data-part='glom'><circle cx='{cx}' cy='{cy}' r='{r}' class='nd-wall' data-part='glom' "
+            f"fill='{fill}' stroke='{INK}' stroke-width='1.2'/>{tuft}</g>")
 
 
 def _link(href, body, attrs=""):
     """Wrap in a link when there is one to follow, in a plain group otherwise."""
     if href:
-        return f"<a href='{html.escape(href, quote=True)}' target='_self' {attrs}>{body}</a>"
+        return f"<a class='nd-go' href='{html.escape(href, quote=True)}' target='_self' {attrs}>{body}</a>"
     return f"<g {attrs}>{body}</g>"
 
 
 # ============================================================
 #  The plate (Home page)
 # ============================================================
-def plate(values, unit="mOsm", names=None, links=None, loops=None, notes=None, animate=True):
+def plate(values, unit="mOsm", links=None, loops=None, pinned=None, animate=True):
     """The annotated figure.
 
     values: {segment code: (inlet, outlet)}; a missing or unusable pair is drawn hatched
             and labelled "n.c." (not converged). The label of a segment is its outlet value.
-    names:  {segment code: full name}, shown while the pointer is over the segment.
-    links:  {segment code or loop name: href}, followed on a click.
+    links:  {segment code, or "loops": href}, followed on a click.
     loops:  the long loops, shallowest first: [{"nephron", "depth" (0-1), "value" (at the bend)}].
             Without it one loop is drawn at full depth.
-    notes:  {"glom": text, "md": text}, shown while the pointer is over the glomerulus or
-            the macula densa.
+    pinned: the segment in the current selection; it is drawn marked.
+
+    What a part says when it is pointed at is not in the figure: see cards().
     """
-    names, links, notes = names or {}, links or {}, notes or {}
+    links = links or {}
     loops = loops if loops is not None else [{"nephron": LOOPS[-1], "depth": 1.0, "value": None}]
     x0, y0, w, h = VIEW
     right = x0 + w
@@ -271,7 +300,7 @@ def plate(values, unit="mOsm", names=None, links=None, loops=None, notes=None, a
     out.append("<g filter='url(#nd-pencil)'>")
     for index, loop in enumerate(loops):
         for d in _loop(_half_width(index, len(loops)), loop["depth"]):
-            out.append(f"<path d='{d}' data-wall='{loop['nephron']}' class='nd-wall' fill='none' "
+            out.append(f"<path d='{d}' data-part='loops' class='nd-wall' fill='none' "
                        f"stroke='{FAINT}' stroke-width='0.9'/>")
 
     # the tubule: all walls first, then the glomerulus, then all lumens on top, so that every
@@ -280,7 +309,7 @@ def plate(values, unit="mOsm", names=None, links=None, loops=None, notes=None, a
     walls, lumens = [], []
     for index, code in enumerate(ORDER):
         fill = f"url(#nd-t-{code})" if _usable(values.get(code)) else "url(#nd-t-none)"
-        wall, lumen = _tube(code, fill, delay=0.15 + 0.2 * index if animate else None)
+        wall, lumen = _tube(code, fill, delay=0.15 + 0.2 * index if animate else None, pinned=code == pinned)
         walls.append(wall)
         lumens.append(lumen)
     first = values.get("PT")
@@ -288,42 +317,42 @@ def plate(values, unit="mOsm", names=None, links=None, loops=None, notes=None, a
     out.append(_glomerulus(tint(first[0]) if _usable(first) else PAPER))
     out += lumens
     # macula densa: the plaque where the thick limb passes its own glomerulus
-    out.append(f"<line x1='262.6' y1='92' x2='262.6' y2='110' data-wall='md' class='nd-wall' "
+    out.append(f"<line x1='262.6' y1='92' x2='262.6' y2='110' data-part='md' class='nd-wall' "
                f"stroke='{INK}' stroke-width='2.8'/>")
     out.append("</g>")
 
     italic = f"font-family=\"{SERIF}\" font-style='italic' fill='{MUTED}'"
     small = f"{italic} font-size='10.5'"
     outer = _half_width(len(loops) - 1, len(loops))
-    out.append(f"<text x='{LOOP_AXIS - outer - 8}' y='500' text-anchor='end' {small}>LDL</text>")
-    out.append(f"<text x='{LOOP_AXIS + outer + 8}' y='500' text-anchor='start' {small}>LAL</text>")
 
-    # ---- what can be pointed at: the long loops, the glomerulus, the macula densa
-    for index, loop in enumerate(loops):
-        hit = "".join(f"<path d='{d}' {_HIT} stroke-width='4'/>"
-                      for d in _loop(_half_width(index, len(loops)), loop["depth"]))
-        out.append(_link(links.get(loop["nephron"]), hit, f"class='nd-seg' data-seg='{loop['nephron']}'"))
-    cx, cy, r = GLOMERULUS
-    out.append(f"<g class='nd-hot' data-seg='glom'><circle cx='{cx}' cy='{cy}' r='{r}' fill='transparent'/>"
-               f"<text x='238' y='70' text-anchor='middle' {small}>glomerulus</text></g>")
-    out.append(f"<g class='nd-hot' data-seg='md'><rect x='256' y='88' width='12' height='26' fill='transparent'/>"
-               f"<text x='279' y='112' text-anchor='start' {small}>macula densa</text></g>")
-
-    # ---- the segments: a generous area to point at, the code and the outlet value
+    # ---- what can be pointed at. Large areas first, small ones on top of them.
+    deepest = max(loop["depth"] for loop in loops)
+    reach = "".join(f"<path d='{d}' {_HIT} stroke-width='{REACH}'/>" for d in _loop(outer / 2, deepest))
+    out.append(_link(links.get("loops"),
+                     reach
+                     + f"<text class='nd-code' x='{LOOP_AXIS - outer - 8}' y='500' text-anchor='end' {small}>LDL</text>"
+                     + f"<text class='nd-code' x='{LOOP_AXIS + outer + 8}' y='500' text-anchor='start' {small}>LAL</text>",
+                     "data-seg='loops'"))
     for index, (code, (x, y, anchor)) in enumerate(LABELS.items()):
         pair = values.get(code)
         shown = f"{pair[1]:.0f}" if _usable(pair) else "n.c."
         fade = f" class='nd-fade' style='animation-delay:{0.45 + 0.2 * index:.2f}s'" if animate else ""
+        mark = " nd-pinned" if code == pinned else ""
         body = (
-            f"<path d='{SEGMENTS[code]['d']}' {_HIT} stroke-width='{SEGMENTS[code]['w'] + 12}'/>"
+            f"<path d='{SEGMENTS[code]['d']}' {_HIT} stroke-width='{REACH}'/>"
             f"<text x='{x}' y='{y}' text-anchor='{anchor}'{fade}>"
-            f"<tspan class='nd-code' font-family=\"{SERIF}\" font-weight='600' font-size='12.5' fill='{INK}'>"
-            f"{html.escape(code)}</tspan>"
+            f"<tspan class='nd-code{mark}' font-family=\"{SERIF}\" font-weight='600' font-size='12.5' "
+            f"fill='{INK}'>{html.escape(code)}</tspan>"
             f"<tspan dx='5' font-family=\"{MONO}\" font-size='10.5' fill='{MUTED}'>{shown}</tspan></text>")
-        out.append(_link(links.get(code), body, f"class='nd-seg' data-seg='{code}'"))
+        out.append(_link(links.get(code), body, f"data-seg='{code}'"))
+    cx, cy, r = GLOMERULUS
+    out.append(f"<g class='nd-hot' data-seg='glom'><circle cx='{cx}' cy='{cy}' r='{r + 2}' fill='transparent'/>"
+               f"<text class='nd-code' x='238' y='70' text-anchor='middle' {small}>glomerulus</text></g>")
+    out.append(f"<g class='nd-hot' data-seg='md'><rect x='255' y='86' width='11' height='30' fill='transparent'/>"
+               f"<text class='nd-code' x='279' y='112' text-anchor='start' {small}>macula densa</text></g>")
 
-    # ---- scale, with a mark for the segment under the pointer (line: inlet, triangle: outlet)
-    bx, by, bw = 404, 578, 80
+    # ---- scale, with a mark for what is under the pointer (line: inlet, triangle: outlet)
+    bx, by, bw = 404, 590, 80
 
     def at(value):
         return bx + bw * (min(max(value, lo), hi) - lo) / (hi - lo)
@@ -337,40 +366,65 @@ def plate(values, unit="mOsm", names=None, links=None, loops=None, notes=None, a
         out.append(f"<text x='{at(v):.1f}' y='{by + 18}' {tick}>{v}</text>")
     out.append(f"<text x='{bx}' y='{by - 9}' font-family=\"{MONO}\" font-size='8.5' letter-spacing='1' "
                f"fill='{MUTED}'>{html.escape(unit)}</text>")
-    marks = {code: values[code] for code in ORDER if _usable(values.get(code))}
-    marks.update({loop["nephron"]: (None, loop["value"]) for loop in loops if _number(loop.get("value"))})
-    for code, (inlet, outlet) in marks.items():
-        x = at(outlet)
-        shape = (f"<path d='M{x - 3:.1f},{by - 6} L{x + 3:.1f},{by - 6} L{x:.1f},{by - 1} Z' fill='{ACCENT}'/>")
-        if inlet is not None:
-            shape += (f"<line x1='{at(inlet):.1f}' y1='{by - 6}' x2='{at(inlet):.1f}' y2='{by}' "
-                      f"stroke='{ACCENT}' stroke-width='1'/>")
-        out.append(f"<g class='nd-mark' data-for='{code}'>{shape}</g>")
 
-    # ---- the reading line under the figure: what is under the pointer, in words
-    ry = y0 + h - 7
-    code_font = f"font-family=\"{SERIF}\" font-weight='600' fill='{INK}'"
-    number = f"font-family=\"{MONO}\" font-size='10' fill='{INK_SOFT}'"
-    out.append(f"<text class='nd-hint' x='{x0 + 6}' y='{ry}' {italic} font-size='10.5' fill-opacity='0.75'>"
-               f"point at a segment for its values; click to open its profile</text>")
-
-    def reading(key, head, name, tail):
-        name_part = f"<tspan dx='6' {italic}>{html.escape(name)}</tspan>" if name else ""
-        tail_part = f"<tspan dx='8' {number}>{html.escape(tail)}</tspan>" if tail else ""
-        out.append(f"<text class='nd-read' data-for='{key}' x='{x0 + 6}' y='{ry}' font-size='11'>"
-                   f"<tspan {code_font}>{html.escape(head)}</tspan>{name_part}{tail_part}</text>")
+    def triangle(value):
+        x = at(value)
+        return f"<path d='M{x - 3:.1f},{by - 6} L{x + 3:.1f},{by - 6} L{x:.1f},{by - 1} Z' fill='{ACCENT}'/>"
 
     for code in ORDER:
-        pair = values.get(code)
-        tail = f"{pair[0]:.0f} → {pair[1]:.0f} {unit}" if _usable(pair) else "did not converge in this scenario"
-        reading(code, code, names.get(code, ""), tail)
-    for loop in loops:
-        tail = f"{loop['value']:.0f} {unit} at the bend" if _number(loop.get("value")) else ""
-        reading(loop["nephron"], loop["nephron"], "long loop of a juxtamedullary nephron", tail)
-    reading("glom", "Glomerulus", notes.get("glom", ""), "")
-    reading("md", "Macula densa", notes.get("md", ""), "")
+        if _usable(values.get(code)):
+            inlet, outlet = values[code]
+            out.append(f"<g class='nd-mark' data-for='{code}'>{triangle(outlet)}"
+                       f"<line x1='{at(inlet):.1f}' y1='{by - 6}' x2='{at(inlet):.1f}' y2='{by}' "
+                       f"stroke='{ACCENT}' stroke-width='1'/></g>")
+    bends = "".join(triangle(loop["value"]) for loop in loops if _number(loop.get("value")))
+    if bends:
+        out.append(f"<g class='nd-mark' data-for='loops'>{bends}</g>")
 
     out.append("</svg>")
+    return "".join(out)
+
+
+# ============================================================
+#  The cards shown beside the pointer
+# ============================================================
+def sparkline(series, width=216, height=38):
+    """A small line through a series of numbers, its two ends marked and nothing else."""
+    series = [v for v in series if _number(v)]
+    if len(series) < 2:
+        return ""
+    low, high = min(series), max(series)
+    span = (high - low) or 1.0
+    pad = 4
+    xs = [pad + (width - 2 * pad) * i / (len(series) - 1) for i in range(len(series))]
+    ys = [height - pad - (height - 2 * pad) * (v - low) / span for v in series]
+    points = " ".join(f"{x:.1f},{y:.1f}" for x, y in zip(xs, ys))
+    return (f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {width} {height}' width='{width}' "
+            f"height='{height}' role='img' aria-label='profile along the segment'>"
+            f"<line x1='{pad}' y1='{height - 0.5}' x2='{width - pad}' y2='{height - 0.5}' "
+            f"stroke='{RULE}' stroke-width='1'/>"
+            f"<polyline points='{points}' fill='none' stroke='{INK}' stroke-width='1.3' "
+            f"stroke-linejoin='round'/>"
+            f"<circle cx='{xs[0]:.1f}' cy='{ys[0]:.1f}' r='2' fill='{PAPER}' stroke='{INK}' stroke-width='1'/>"
+            f"<circle cx='{xs[-1]:.1f}' cy='{ys[-1]:.1f}' r='2.2' fill='{ACCENT}'/></svg>")
+
+
+def cards(entries):
+    """The cards of a figure, as HTML to place beside it.
+
+    entries: {key: {"head", "name", "rows": [(label, text)], "series": numbers or None, "hint"}}
+    where key is what the card belongs to (a segment code, "loops", "glom", "md").
+    """
+    out = []
+    for key, entry in entries.items():
+        rows = "".join(f"<dt>{html.escape(label)}</dt><dd>{html.escape(text)}</dd>"
+                       for label, text in entry.get("rows", ()))
+        name = f"<div class='name'>{html.escape(entry['name'])}</div>" if entry.get("name") else ""
+        hint = f"<div class='hint'>{html.escape(entry['hint'])}</div>" if entry.get("hint") else ""
+        out.append(f"<div class='nd-card' data-for='{html.escape(key, quote=True)}'>"
+                   f"<div class='head'>{html.escape(entry['head'])}</div>{name}"
+                   f"{sparkline(entry['series']) if entry.get('series') else ''}"
+                   f"{'<dl>' + rows + '</dl>' if rows else ''}{hint}</div>")
     return "".join(out)
 
 

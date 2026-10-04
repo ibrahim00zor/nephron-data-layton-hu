@@ -361,7 +361,6 @@ def colophon():
         f"{_imprint()}</div>{KEYS_CARD}",
         unsafe_allow_html=True,
     )
-    st.html(BEHAVIOUR, unsafe_allow_javascript=True)
 
 
 def _imprint():
@@ -376,7 +375,7 @@ def _imprint():
     return "<br>" + " · ".join(parts)
 
 
-# The keys (shown by "?"). Stepping is done with ordinary links, so it works like a click.
+# The keys (shown by "?"; the listening is in events.py).
 KEYS_CARD = (
     "<div class='nd-keys' role='note'><div class='nd-label'>Keys</div><dl>"
     "<dt>]</dt><dd>next segment along the nephron</dd>"
@@ -385,44 +384,6 @@ KEYS_CARD = (
     "<dt>?</dt><dd>show or hide this card</dd>"
     "</dl><div class='nd-side-meta'>The address of the page always carries your selection.</div></div>"
 )
-
-BEHAVIOUR = """<script>
-(function () {
-  if (window.__ndBehaviour) return;
-  window.__ndBehaviour = true;
-  function typing(e) {
-    var t = e.target;
-    return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
-  }
-  function flash(message) {
-    var el = document.getElementById('nd-flash');
-    if (!el) { el = document.createElement('div'); el.id = 'nd-flash'; document.body.appendChild(el); }
-    el.textContent = message;
-    el.classList.add('on');
-    clearTimeout(el._timer);
-    el._timer = setTimeout(function () { el.classList.remove('on'); }, 1800);
-  }
-  document.addEventListener('keydown', function (e) {
-    if (e.metaKey || e.ctrlKey || e.altKey || typing(e)) return;
-    if (e.key === '?') { document.body.classList.toggle('nd-keys-on'); return; }
-    if (e.key === 'Escape') { document.body.classList.remove('nd-keys-on'); return; }
-    if (e.key === '[' || e.key === ']') {
-      var where = document.querySelector('.nd-where');
-      var to = where && (e.key === '[' ? where.dataset.prev : where.dataset.next);
-      if (to) { e.preventDefault(); window.location.href = to; }
-    }
-  });
-  document.addEventListener('click', function (e) {
-    var link = e.target.closest && e.target.closest('[data-testid="stHeaderActionElements"] a');
-    if (!link || !navigator.clipboard) return;
-    setTimeout(function () {
-      navigator.clipboard.writeText(window.location.href).then(function () {
-        flash('link to this view copied');
-      });
-    }, 60);
-  });
-})();
-</script>"""
 
 # ============================================================
 #  Citation footer (under every chart)

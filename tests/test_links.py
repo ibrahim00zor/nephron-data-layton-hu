@@ -63,8 +63,47 @@ def test_the_address_follows_the_selection():
 def test_the_sidebar_map_links_every_segment():
     at = open_with(segment="mTAL")
     html = " ".join(m.value for m in at.sidebar.markdown)
-    links = re.findall(r"<a href='([^']*)'", html)
+    links = re.findall(r"<a class='nd-go' href='([^']*)'", html)
     assert len(links) == 12, links                # ten segments and the two thin limbs
     assert any("segment=cTAL" in link for link in links)
     assert "data-prev='" in html and "segment=SDL" in html     # the keys step along the nephron
     assert "data-next='" in html
+
+
+FOLLOW = """
+import sys
+sys.path.insert(0, {kod!r})
+import streamlit as st
+import nav
+
+allowed = {{"scenario": ["F_normal", "F_HT"], "compare": ["F_normal", "F_HT"], "case": ["SGLT2"],
+           "solute": ["Na", "K", "urea"], "segment": ["PT", "mTAL", "LDL"],
+           "nephron": ["sup", "jux3"], "compartment": ["Lumen", "Cell", "Bath"]}}
+nav.put(scenario="F_HT", solute="urea", nephron="jux3", segment="PT")
+page = nav.follow({address!r}, allowed)
+st.write(repr(page))
+st.write("|".join(str(nav.get(name)) for name in ("scenario", "solute", "segment", "nephron")))
+"""
+
+
+def follow(address):
+    at = AppTest.from_string(FOLLOW.format(kod=KOD, address=address), default_timeout=TIMEOUT).run()
+    assert not at.exception, [str(e.value) for e in at.exception]
+    return at.markdown[0].value.strip("`'"), at.markdown[1].value
+
+
+def test_a_link_clicked_inside_the_app_acts_like_opening_it():
+    # what the address names is applied; what it leaves out goes back to its default
+    page, state = follow("segment_profile?segment=mTAL&solute=K")
+    assert page == "segment" and state == "F_normal|K|mTAL|sup"
+    page, state = follow("?scenario=F_HT&nephron=jux3")          # the Home page
+    assert page == "home" and state == "F_HT|Na|PT|jux3"
+    page, state = follow("./?segment=LDL")
+    assert page == "home" and state == "F_normal|Na|LDL|sup"
+
+
+def test_a_link_to_nowhere_changes_nothing():
+    page, state = follow("no_such_page?segment=mTAL")
+    assert page == "None" and state == "F_HT|urea|PT|jux3"
+    page, state = follow("segment_profile?segment=DROP TABLE&solute=plutonium")
+    assert page == "segment" and state == "F_normal|Na|PT|sup"   # unknown values fall to the defaults

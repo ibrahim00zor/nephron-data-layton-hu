@@ -1,18 +1,21 @@
-"""home.py — Home: what this is, three places to start, how to find your way, what to keep in mind."""
+"""home.py — Home: what this is, the nephron as a figure you can point at, three places to
+start, how to find your way, what to keep in mind."""
 import streamlit as st
 import plotly.express as px
 
 import nav
 import nephron_figure
 import style
-from ui_kit import q, DB, SCENARIO_LABEL, loop_depths, scalar, segment_broken, segment_names
+from ui_kit import (
+    q, DB, SCENARIO_LABEL, loop_depths, neph_for, scalar, segment_broken, segment_names,
+)
 
-# ============================================================
-#  Masthead, with the plate: the nephron of the active scenario
-# ============================================================
 scenario = nav.get("scenario")
 
 
+# ============================================================
+#  What the figure needs from the dataset (all direct reads)
+# ============================================================
 def _plate_values(scenario):
     """Lumen osmolality at the inlet and outlet of each segment: the superficial nephron,
     then the collecting duct. Segments that did not converge are left out."""
@@ -28,6 +31,165 @@ def _plate_values(scenario):
             if not segment_broken(scenario, row.segment)}
 
 
+def _plate_profiles(scenario):
+    """For the cards: the lumen osmolality along each segment (thinned to about fifty points)
+    and the lumen Na+ concentration at its two ends."""
+    osm = q(
+        f"""SELECT segment, position, value FROM {DB}
+            WHERE condition=? AND variable='osmolality' AND compartment='Lumen'
+                  AND nephron IN ('sup', 'merged')
+            ORDER BY segment, position""",
+        [scenario],
+    )
+    sodium = q(
+        f"""SELECT segment, arg_min(value, position) AS inlet, arg_max(value, position) AS outlet
+            FROM {DB}
+            WHERE condition=? AND variable='con' AND solute='Na' AND compartment='Lumen'
+                  AND nephron IN ('sup', 'merged')
+            GROUP BY segment""",
+        [scenario],
+    )
+    out = {}
+    for segment, part in osm.groupby("segment"):
+        series = part["value"].tolist()
+        step = max(len(series) // 50, 1)
+        out[segment] = {"osm": series[::step] + series[-1:]}
+    for row in sodium.itertuples():
+        out.setdefault(row.segment, {})["na"] = (row.inlet, row.outlet)
+    return out
+
+
+def _plate_loops(scenario):
+    """The long loops of the five juxtamedullary nephrons: how deep each reaches (from the
+    length the model gives its descending limb) and the lumen osmolality at its bend."""
+    bends = q(
+        f"""SELECT nephron, arg_max(value, position) AS bend FROM {DB}
+            WHERE condition=? AND variable='osmolality' AND compartment='Lumen' AND segment='LDL'
+            GROUP BY nephron""",
+        [scenario],
+    )
+    bends = dict(zip(bends["nephron"], bends["bend"]))
+    depths = loop_depths()
+    return [{"nephron": name, "depth": depths.get(name, (i + 1) / len(nephron_figure.LOOPS)),
+             "value": bends.get(name)}
+            for i, name in enumerate(nephron_figure.LOOPS)]
+
+
+def _plate_notes(scenario):
+    """What the figure says about the glomerulus and the macula densa."""
+    where = "compartment='Lumen' AND nephron='sup'"      # scalar() adds the scenario
+    flow = scalar(f"SELECT value FROM {DB} WHERE {where} AND variable='water_volume' "
+                  f"AND segment='PT' AND position=0", scenario)
+    osm = scalar(f"SELECT value FROM {DB} WHERE {where} AND variable='osmolality' "
+                 f"AND segment='PT' AND position=0", scenario)
+    sodium = scalar(f"SELECT value FROM {DB} WHERE {where} AND variable='con' AND solute='Na' "
+                    f"AND segment='cTAL' AND position=1", scenario)
+    notes = {}
+    if flow and osm:
+        notes["glom"] = f"Fluid enters the proximal tubule at {flow:.0f} nl/min, {osm:.0f} mOsm."
+    if sodium:
+        notes["md"] = f"Lumen Na⁺ where the cTAL ends: {sodium:.0f} mM."
+    return notes
+
+
+def _plate_cards(values, profiles, loops, notes, names):
+    """What each part of the figure says when it is pointed at."""
+    entries = {}
+    for code in nephron_figure.ORDER:
+        entry = {"head": code, "name": names.get(code, ""), "hint": "click to select this segment"}
+        pair = values.get(code)
+        if pair is None:
+            entry["rows"] = [("status", "did not converge")]
+        else:
+            entry["series"] = profiles.get(code, {}).get("osm")
+            entry["rows"] = [("osmolality", f"{pair[0]:.0f} → {pair[1]:.0f} mOsm")]
+            sodium = profiles.get(code, {}).get("na")
+            if sodium:
+                entry["rows"].append(("Na⁺", f"{sodium[0]:.0f} → {sodium[1]:.0f} mM"))
+            entry["hint"] = "line: osmolality along the segment · click to select"
+        entries[code] = entry
+    bends = [(loop["nephron"], f"{loop['value']:.0f} mOsm at the bend")
+             for loop in loops if loop.get("value") == loop.get("value") and loop.get("value") is not None]
+    entries["loops"] = {"head": "Long loops", "name": "of the five juxtamedullary nephrons",
+                        "rows": bends, "hint": "click to compare the nephron types"}
+    if notes.get("glom"):
+        entries["glom"] = {"head": "Glomerulus", "name": notes["glom"]}
+    if notes.get("md"):
+        entries["md"] = {"head": "Macula densa", "name": notes["md"]}
+    return entries
+
+
+def _panel_chart(df, color, color_map=None, category_orders=None, right=48):
+    fig = px.line(df, x="position", y="value", color=color, height=190,
+                  color_discrete_map=color_map, category_orders=category_orders or {})
+    fig.update_layout(margin=dict(l=8, r=right, t=4, b=8), showlegend=False,
+                      xaxis_title=None, yaxis_title=None)
+    fig.update_traces(line=dict(width=1.8))
+
+    # Each line is named where it ends, instead of in a legend. Names that would collide
+    # are moved apart (top to bottom, at least 13 px between them).
+    low, high = df["value"].min(), df["value"].max()
+    px_per_unit = 150 / ((high - low) or 1)
+    previous = None
+    for trace in sorted(fig.data, key=lambda t: t.y[-1], reverse=True):
+        at = (trace.y[-1] - low) * px_per_unit
+        if previous is not None and previous - at < 13:
+            at = previous - 13
+        previous = at
+        fig.add_annotation(x=trace.x[-1], y=trace.y[-1], text=trace.name, showarrow=False,
+                           xanchor="left", xshift=5, yshift=at - (trace.y[-1] - low) * px_per_unit,
+                           font=dict(size=12.5, color=trace.line.color))
+    return fig
+
+
+def _reading(scenario, segment):
+    """Under the figure: the segment in the selection, read out. A click on the figure
+    changes the selection, so this is where the figure answers."""
+    nephron = nav.get("nephron")
+    if segment in nephron_figure.GHOST and not str(nephron).startswith("jux"):
+        nephron = "jux5"                         # the thin limbs exist only in a long loop
+    elif nephron == "merged":
+        nephron = "sup"                          # "merged" is the collecting duct only
+    shown = neph_for(segment, nephron)
+    name = segment_names().get(segment, "")
+    st.markdown(
+        f"<div class='nd-reading'><span class='nd-label'>Selected</span>"
+        f"<b>{segment}</b><i>{name}</i><span class='nd-side-meta'>{shown}</span></div>",
+        unsafe_allow_html=True,
+    )
+    if segment_broken(scenario, segment):
+        style.pending(f"{segment} did not converge in this scenario, so there is no profile to show.")
+        return
+    df = q(
+        f"""SELECT position, value, compartment AS series FROM {DB}
+            WHERE condition=? AND variable='osmolality' AND segment=? AND nephron=?
+                  AND compartment IN ('Lumen', 'Bath')
+            ORDER BY compartment, position""",
+        [scenario, segment, shown],
+    )
+    if df.empty:
+        style.pending(f"No profile for {segment} in the {shown} nephron.")
+        return
+    df["series"] = df["series"].map({"Lumen": "tubular fluid", "Bath": "interstitium"})
+    st.plotly_chart(
+        _panel_chart(df, "series", {"tubular fluid": style.ACCENT, "interstitium": style.REFERENCE_SERIES},
+                     right=84),
+        width="stretch", key="home_reading_chart", config=style.QUIET_CHART,
+    )
+    st.caption("Osmolality (mOsm) along the segment, from where the fluid enters (0) to where it "
+               "leaves (1). The interstitium is what the model is given.")
+    row = st.container(horizontal=True, gap="small")
+    if row.button("Segment Profile →", key="home_read_seg"):
+        nav.go("segment", back_label="Fig. 1 on the Home page", segment=segment, nephron=nephron)
+    if row.button("Transporters →", key="home_read_trn"):
+        nav.go("transporters", back_label="Fig. 1 on the Home page", segment=segment, nephron=nephron)
+    if row.button("Interactive drawing →", key="home_plate"):
+        nav.go("anatomy", back_label="Fig. 1 on the Home page")
+
+
+# ============================================================
+#  Masthead, with the plate: the nephron of the active scenario
+# ============================================================
 text, figure = st.columns(2, gap="large")
 with text:
     st.markdown(
@@ -58,60 +220,30 @@ with text:
         unsafe_allow_html=True,
     )
 
-def _plate_loops(scenario):
-    """The long loops of the five juxtamedullary nephrons: how deep each reaches (from the
-    length the model gives its descending limb) and the lumen osmolality at its bend."""
-    bends = q(
-        f"""SELECT nephron, arg_max(value, position) AS bend FROM {DB}
-            WHERE condition=? AND variable='osmolality' AND compartment='Lumen' AND segment='LDL'
-            GROUP BY nephron""",
-        [scenario],
-    )
-    bends = dict(zip(bends["nephron"], bends["bend"]))
-    depths = loop_depths()
-    return [{"nephron": name, "depth": depths.get(name, (i + 1) / len(nephron_figure.LOOPS)),
-             "value": bends.get(name)}
-            for i, name in enumerate(nephron_figure.LOOPS)]
-
-
-def _plate_notes(scenario):
-    """What the figure says about the glomerulus and the macula densa: direct reads of the data."""
-    where = "compartment='Lumen' AND nephron='sup'"      # scalar() adds the scenario
-    flow = scalar(f"SELECT value FROM {DB} WHERE {where} AND variable='water_volume' "
-                  f"AND segment='PT' AND position=0", scenario)
-    osm = scalar(f"SELECT value FROM {DB} WHERE {where} AND variable='osmolality' "
-                 f"AND segment='PT' AND position=0", scenario)
-    sodium = scalar(f"SELECT value FROM {DB} WHERE {where} AND variable='con' AND solute='Na' "
-                    f"AND segment='cTAL' AND position=1", scenario)
-    notes = {}
-    if flow and osm:
-        notes["glom"] = f"fluid enters the proximal tubule at {flow:.0f} nl/min, {osm:.0f} mOsm"
-    if sodium:
-        notes["md"] = f"lumen Na⁺ where the cTAL ends: {sodium:.0f} mM"
-    return notes
-
-
 with figure:
     values = _plate_values(scenario)
+    loops = _plate_loops(scenario)
+    selected = nav.get("segment")
     missing = [code for code in nephron_figure.ORDER if code not in values]
-    # a click on a segment opens its profile; a click on a long loop opens that nephron's LDL
-    links = {code: nav.href("segment", segment=code) for code in nephron_figure.ORDER}
-    links.update({name: nav.href("segment", segment="LDL", nephron=name) for name in nephron_figure.LOOPS})
+    # a click on a segment selects it here (the reading below follows, and so does every other
+    # page); a click on the long loops opens the comparison of the nephron types
+    links = {code: nav.href(segment=code) for code in nephron_figure.ORDER}
+    links["loops"] = nav.href("types", segment="LDL")
     st.markdown(
         "<figure class='nd-plate'>"
-        + nephron_figure.plate(values, names=segment_names(), links=links,
-                               loops=_plate_loops(scenario), notes=_plate_notes(scenario))
+        + nephron_figure.plate(values, links=links, loops=loops, pinned=selected)
+        + nephron_figure.cards(_plate_cards(values, _plate_profiles(scenario), loops,
+                                            _plate_notes(scenario), segment_names()))
         + "<figcaption><b>Fig. 1.</b> The superficial nephron of the model and the collecting duct it "
         "drains into. The tint and the numbers are the osmolality of the tubular fluid (mOsm) where "
-        f"it leaves each segment, in <i>{SCENARIO_LABEL.get(scenario, scenario)}</i>; change the "
-        "scenario in the left panel and the figure follows. In hairline: the long loops of the five "
+        f"it leaves each segment, in <i>{SCENARIO_LABEL.get(scenario, scenario)}</i>. Point at a part "
+        "for its values; click a segment to select it. In hairline: the long loops of the five "
         "juxtamedullary nephrons, to the relative depths the model gives them. "
         + (f"{', '.join(missing)} did not converge in this scenario (n.c.). " if missing else "")
         + "Schematic, not to scale; the model has no vasculature, so none is drawn.</figcaption></figure>",
         unsafe_allow_html=True,
     )
-    if st.button("Open the interactive drawing →", key="home_plate", width="stretch"):
-        nav.go("anatomy", back_label="Fig. 1 on the Home page")
+    _reading(scenario, selected)
 
 # ============================================================
 #  Three places to start — each opens the matching page with its selection applied
@@ -129,29 +261,6 @@ def _panel_head(letter, what, how):
     )
 
 
-def _panel_chart(df, color, color_map=None, category_orders=None):
-    fig = px.line(df, x="position", y="value", color=color, height=190,
-                  color_discrete_map=color_map, category_orders=category_orders or {})
-    fig.update_layout(margin=dict(l=8, r=48, t=4, b=8), showlegend=False,
-                      xaxis_title=None, yaxis_title=None)
-    fig.update_traces(line=dict(width=1.8))
-
-    # Each line is named where it ends, instead of in a legend. Names that would collide
-    # are moved apart (top to bottom, at least 13 px between them).
-    low, high = df["value"].min(), df["value"].max()
-    px_per_unit = 150 / ((high - low) or 1)
-    previous = None
-    for trace in sorted(fig.data, key=lambda t: t.y[-1], reverse=True):
-        at = (trace.y[-1] - low) * px_per_unit
-        if previous is not None and previous - at < 13:
-            at = previous - 13
-        previous = at
-        fig.add_annotation(x=trace.x[-1], y=trace.y[-1], text=trace.name, showarrow=False,
-                           xanchor="left", xshift=5, yshift=at - (trace.y[-1] - low) * px_per_unit,
-                           font=dict(size=12.5, color=trace.line.color))
-    return fig
-
-
 a, b, c = st.columns(3, gap="medium")
 
 with a:
@@ -166,7 +275,7 @@ with a:
     df["series"] = df["series"].map({"F_normal": "♀", "M_normal": "♂"})
     _panel_head("a", "Does sex change the thick limb?", "Na⁺ in the mTAL lumen, ♀ and ♂ (mM)")
     st.plotly_chart(_panel_chart(df, "series", {"♀": style.SCENARIO_COLOR["F_normal"],
-                                                "♂": style.SCENARIO_COLOR["M_normal"]}), width='stretch')
+                                                "♂": style.SCENARIO_COLOR["M_normal"]}), width='stretch', config=style.QUIET_CHART)
     if st.button("Open in Comparison →", key="home_q1", width="stretch"):
         nav.go("comparison", back_label="starting point a, sex difference",
                compare=["F_normal", "M_normal"], solute="Na", segment="mTAL",
@@ -185,7 +294,7 @@ with b:
     _panel_head("b", "What does diabetes do to glucose?", "Glucose in the PT lumen, normal and diabetes (mM)")
     st.plotly_chart(_panel_chart(df, "series", {"normal": style.REFERENCE_SERIES,
                                                 "diabetes": style.SCENARIO_COLOR["F_diab_mod"]}),
-                    width='stretch')
+                    width='stretch', config=style.QUIET_CHART)
     if st.button("Open in Comparison →", key="home_q2", width="stretch"):
         nav.go("comparison", back_label="starting point b, diabetes",
                compare=["F_normal", "F_diab_mod"], solute="glu", segment="PT",
@@ -202,7 +311,7 @@ with c:
     _panel_head("c", "What is the tubule placed in?",
                 "Interstitial osmolality along the collecting duct (mOsm) — a model input")
     st.plotly_chart(_panel_chart(df, "segment", category_orders={"segment": ["CCD", "OMCD", "IMCD"]}),
-                    width='stretch')
+                    width='stretch', config=style.QUIET_CHART)
     if st.button("Open in Whole Nephron →", key="home_q3", width="stretch"):
         nav.go("nephron", back_label="starting point c, the interstitium",
                scenario="F_normal", solute="Na", compartment="Bath", nephron="sup")

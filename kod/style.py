@@ -71,6 +71,9 @@ NEPHRON_COLOR = {
 REFERENCE_SERIES = "#4a463e"   # the baseline in a "case vs normal" chart
 
 
+# A small figure is read, not operated: no toolbar over it, no zooming by accident.
+QUIET_CHART = {"displayModeBar": False, "scrollZoom": False, "doubleClick": False}
+
 # ============================================================
 #  Charts: drawn like figures in a journal
 # ============================================================
@@ -113,6 +116,9 @@ h3, h4, h5 {{ letter-spacing: -0.005em; }}
 hr {{ border: 0; border-top: 1px solid {RULE}; margin: 1.5rem 0 1.3rem; }}
 [data-testid="stCaptionContainer"] {{ color: {MUTED}; }}
 [data-testid="stCaptionContainer"] p {{ font-size: 0.92rem; line-height: 1.5; }}
+
+/* the listener for clicks and keys (events.py) draws nothing and takes no room */
+[data-testid="stElementContainer"]:has([data-testid^="stBidiComponent"]) {{ display: none; }}
 
 /* ---------- labels and numbers ---------- */
 [data-testid="stWidgetLabel"] p {{
@@ -262,6 +268,14 @@ dl.nd-issues code {{ font-size: 0.82rem; }}
 figure.nd-plate {{ margin: 1.5rem 0 0; border-top: 1px solid {INK_SOFT}; padding-top: 0.5rem; }}
 figure.nd-plate figcaption {{ font-size: 0.84rem; line-height: 1.5; color: {MUTED}; margin-top: 0.5rem; }}
 figure.nd-plate figcaption b {{ color: {INK_SOFT}; font-weight: 600; }}
+
+.nd-reading {{
+  display: flex; align-items: baseline; gap: 0.55rem; flex-wrap: wrap;
+  border-top: 1px solid {INK_SOFT}; padding-top: 0.5rem; margin-top: 0.3rem;
+}}
+.nd-reading b {{ font-weight: 600; font-size: 1.05rem; color: {ACCENT}; }}
+.nd-reading i {{ color: {INK_SOFT}; }}
+.nd-reading .nd-side-meta {{ margin-left: auto; }}
 
 .nd-colophon {{
   border-top: 1px solid {INK_SOFT}; padding-top: 0.7rem; margin-top: 2.2rem;

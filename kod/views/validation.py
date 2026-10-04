@@ -32,7 +32,8 @@ inputs = []    # (name, value, expected, ok, how) — what the model is given
 
 def see(page, label, **selection):
     """A link that opens the page where the checked quantity can be seen."""
-    return f" <a href='{html.escape(nav.href(page, **selection), quote=True)}' target='_self'>{label} →</a>"
+    return (f" <a class='nd-go' href='{html.escape(nav.href(page, **selection), quote=True)}' "
+            f"target='_self'>{label} →</a>")
 
 
 def value(sql):

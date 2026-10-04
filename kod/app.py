@@ -9,6 +9,7 @@ Run with:  streamlit run kod/app.py
 """
 import streamlit as st
 
+import events
 import nav
 import nephron_figure
 import style
@@ -39,13 +40,20 @@ st.set_page_config(
 st.logo(nephron_figure.mark(), size="large")
 apply_frame()
 
-# A link carries a selection (see nav.href): take it once, when the session starts.
+# A link carries a selection (see nav.href). Opened from outside, it is read once, when the
+# session starts. Clicked inside the app, it is answered in place (see events.py).
 segments, solutes = options()
-nav.read_url({
+allowed = {
     "scenario": scenario_list(), "compare": scenario_list(), "case": list(CASES),
     "solute": solutes, "segment": segments, "nephron": NEPHRONS,
     "compartment": ["Lumen", "Cell", "Bath"],
-})
+}
+nav.read_url(allowed)
+followed = events.went()
+if followed:
+    target = nav.follow(followed, allowed)
+    if target and target != current:
+        st.switch_page(nav.path(target))
 render_sidebar()
 nav.render_origin()
 if nav.PAGES[current]["section"]:
