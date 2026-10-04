@@ -76,9 +76,12 @@ st.markdown("""
   source. Other units are from the README.</span>
 </div>
 <div style="border:1px solid #bfdbfe;background:#eff6ff;padding:12px 14px;border-radius:6px;">
-  <b style="color:#1e40af;">Gradient peak ~734 mOsm vs literature ~1200</b><br>
-  <span style="color:#374151;">The inner-medullary concentrating mechanism is not fully reproduced
-  by mathematical models — a known open problem.</span>
+  <b style="color:#1e40af;">The interstitial gradient is prescribed (~734 mOsm at the papilla)</b><br>
+  <span style="color:#374151;">Interstitial fluid composition is a model <b>input</b>: specified at
+  the cortex, the outer–inner medullary boundary and the papillary tip, linear in between
+  (Layton &amp; Layton 2019, Table 2), and identical in all six scenarios here. The ~734 mOsm is
+  therefore not a result and not a failed prediction; ~1200 mOsm is reported for maximal
+  antidiuresis. The model has no vasculature and does not simulate how the gradient forms.</span>
 </div>
 """, unsafe_allow_html=True)
 

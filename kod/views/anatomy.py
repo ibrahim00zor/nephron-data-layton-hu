@@ -15,7 +15,7 @@ st.caption(
     "D3.js-based anatomic nephron drawing. "
     "Segment color shows the selected solute's concentration (switchable to solute **load / flux** "
     "with the button on top), segment thickness shows tubular water flow (volume), "
-    "and the background gradient reflects interstitial osmolality. "
+    "and the background gradient reflects the prescribed interstitial osmolality. "
     "The flow animation conveys water flow via particle speed; click a segment to pin its profile to the chart."
 )
 
@@ -196,9 +196,9 @@ else:  # older Streamlit: the component API that st.iframe replaces
     import streamlit.components.v1 as components
     components.html(html_rendered, height=870, scrolling=False)
 
-# Model-limit note (kept short and understated by design; readers who dig will find it)
+# Input note (kept short and understated by design; readers who dig will find it)
 st.caption(
-    "ℹ The background gradient is based on the interstitial osmolality the model computes. "
-    "In the Layton/Hu model, papillary osmolality is limited to ~734 mOsm; "
-    "the in-vivo value is ~1200 mOsm (a known model limit)."
+    "ℹ The background gradient shows the interstitial osmolality the model is **given** as an "
+    "input — it is prescribed, not computed (Layton & Layton 2019, Table 2). Its papillary value "
+    "is ~734 mOsm in every scenario; ~1200 mOsm is reported for maximal antidiuresis."
 )

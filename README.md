@@ -117,9 +117,12 @@ that model's output; it does not re-implement the model.
 
 ## Known limits
 
-- **Inner-medullary gradient:** the model's papillary osmolality peaks at ~734 mOsm; the
-  in-vivo value is ~1200 mOsm. The inner-medullary concentrating mechanism is not fully
-  reproduced by mathematical models — a known open problem.
+- **The interstitium is an input, not a result.** Interstitial fluid composition is specified
+  at the cortex, the outer–inner medullary boundary and the papillary tip and interpolated
+  linearly in between (Layton & Layton 2019, Table 2); it is identical in all six scenarios.
+  The ~734 mOsm at the papillary tip is therefore a setting, not a prediction, and is below the
+  ~1200 mOsm reported for maximal antidiuresis. The model has no vasculature and does not
+  simulate how the medullary gradient is generated.
 - **Scenario library 6/10:** four target scenarios (F_diab_severe, F_ACE, F_obese, F_UNX)
   failed to converge in the model's Newton solver (numerical overflow).
 - **Non-converged distal segments** are hidden in the charts; distal/urine claims are only

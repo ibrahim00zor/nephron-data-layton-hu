@@ -134,7 +134,7 @@ with q3:
             ORDER BY segment, position""",
         [],
     )
-    _card_title("#1e40af", "Medullary gradient", "Interstitial osmolality, CCD → IMCD")
+    _card_title("#1e40af", "Medullary gradient", "Interstitial osmolality, CCD → IMCD (a model input)")
     st.plotly_chart(_card_chart(df, "segment", category_orders={"segment": ["CCD", "OMCD", "IMCD"]}),
                     width='stretch')
     if st.button("Open in Whole Nephron", key="home_q3", width="stretch"):
@@ -173,11 +173,14 @@ with c1:
     st.markdown(
         "<div style='border:1px solid #e5e7eb;border-left:3px solid #6b7280;"
         "padding:10px 14px;border-radius:4px;'>"
-        "<b style='color:#374151;'>Model limit</b><br>"
+        "<b style='color:#374151;'>The interstitium is an input</b><br>"
         "<span style='color:#4b5563;font-size:0.92rem;'>"
-        "Inner-medullary osmotic gradient ~734 mOsm; literature ~1200 mOsm (max ADH). "
-        "The inner-medullary concentrating mechanism is <b>not fully reproduced</b> by "
-        "mathematical models — an open problem.</span>"
+        "The interstitial fluid composition is <b>prescribed, not computed</b>: it is specified at "
+        "the cortex, the outer–inner medullary boundary and the papillary tip and interpolated "
+        "linearly in between (Layton &amp; Layton 2019, Table 2). The ~734 mOsm at the papillary tip "
+        "is therefore a setting, identical in all six scenarios — not a prediction — and is below "
+        "the ~1200 mOsm reported for maximal antidiuresis. The model has no vasculature and does "
+        "not simulate how the medullary gradient is generated.</span>"
         "</div>", unsafe_allow_html=True,
     )
 with c2:

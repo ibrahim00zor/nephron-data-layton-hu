@@ -9,7 +9,8 @@ What is covered
 - the shared selection travels between pages and is not overwritten by a page that
   cannot show it;
 - contextual jumps (home -> model pages, clinical case <-> model pages, scenario ->
-  clinical case) land with the right selection and the back link returns to the origin.
+  clinical case) land with the right selection and the back link returns to the origin;
+- the validation page scores model outputs only.
 
 One AppTest detail: a browser keeps the current page in the URL, AppTest does not follow
 an in-app jump (st.switch_page) on the next interaction. `jump()` below therefore clicks
@@ -188,6 +189,23 @@ def test_clinical_model_numbers_unchanged():
     assert metrics["Na load to macula densa"] == ("571 pmol/min", "+38%"), metrics
     assert metrics["Macula densa Na conc."] == ("31 mM", "+19%"), metrics
     assert metrics["PT glucose outlet"] == ("8.5 mM", "+8.4 mM"), metrics
+
+
+def test_validation_scores_outputs_only():
+    """Prescribed inputs are shown but never scored; non-converged segments are not 'failures'."""
+    at = new_app("validation")
+    metrics = {m.label: m.value for m in at.metric}
+    assert metrics["Output checks passed"] == "7 / 7", metrics
+    text = " ".join(m.value for m in at.main.markdown)
+    assert "Prescribed inputs" in text and "Corticomedullary gradient (interstitium)" in text
+
+    # M_normal and F_diab_mod have a non-converged IMCD: the urine check must be n/a, not failed.
+    for scenario in ("M_normal", "F_diab_mod"):
+        at = new_app("validation", scenario=scenario)
+        metrics = {m.label: m.value for m in at.metric}
+        assert metrics["Output checks passed"] == "6 / 6", (scenario, metrics)
+        text = " ".join(m.value for m in at.main.markdown)
+        assert "IMCD did not converge" in text and "nan mOsm" not in text and "-1129" not in text
 
 
 TESTS = [obj for name, obj in sorted(globals().items()) if name.startswith("test_") and callable(obj)]
