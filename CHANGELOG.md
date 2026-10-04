@@ -84,6 +84,28 @@ Requires `streamlit>=1.52`. The dataset (`veri/nephron_veritabani.parquet`) is u
   ruled ledger; Data Integrity lists its notes as definitions; every page ends in a colophon.
 - The Streamlit "Deploy" button and developer menu are hidden (`toolbarMode = "minimal"`).
 
+- **Details that reward a closer look.**
+  - *The figure answers.* Pointing at a segment of Fig. 1 marks it, gives its full name and its
+    inlet and outlet values under the figure, and shows them on the scale; a click opens that
+    segment in Segment Profile. The five long loops of the juxtamedullary nephrons are drawn to
+    the relative depths the model gives them and can be pointed at and opened too; so can the
+    glomerulus and the macula densa. What is under the pointer is also marked on the sidebar map.
+  - *The figure is drawn.* The lines pass through a slight unevenness, as from a pencil, and on
+    the first view the tubule is drawn in the order the fluid meets the segments.
+  - *The sidebar map is a control.* A click on a segment selects it; the long loop is drawn to
+    the depth of the selected juxtamedullary nephron.
+  - *The address carries the selection.* The URL of a page always holds what the page shows
+    (scenario, solute, segment, nephron, compartment, compared scenarios, case), so a copied
+    address is a link to exactly that view. Values that do not exist are ignored.
+  - *Keys.* `[` and `]` step along the nephron, `?` shows the keys. The mark beside a page
+    title is a pilcrow; a click copies the link to the view.
+  - *Validation explains itself.* A row opens to say exactly what the check reads from the
+    dataset, with a link to the page where it can be seen.
+  - *Data Integrity* shows one small nephron per scenario with the stretch that did not converge
+    struck out.
+  - Abbreviations in the sidebar give their full names under the pointer; the colophon names the
+    build (commit) and the dataset (SHA-256), in full under the pointer.
+
 No data, query or scientific statement is changed by the design work.
 
 ### Fixed

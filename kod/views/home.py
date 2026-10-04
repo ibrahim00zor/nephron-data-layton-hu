@@ -5,7 +5,7 @@ import plotly.express as px
 import nav
 import nephron_figure
 import style
-from ui_kit import q, DB, SCENARIO_LABEL, segment_broken
+from ui_kit import q, DB, SCENARIO_LABEL, loop_depths, scalar, segment_broken, segment_names
 
 # ============================================================
 #  Masthead, with the plate: the nephron of the active scenario
@@ -58,15 +58,54 @@ with text:
         unsafe_allow_html=True,
     )
 
+def _plate_loops(scenario):
+    """The long loops of the five juxtamedullary nephrons: how deep each reaches (from the
+    length the model gives its descending limb) and the lumen osmolality at its bend."""
+    bends = q(
+        f"""SELECT nephron, arg_max(value, position) AS bend FROM {DB}
+            WHERE condition=? AND variable='osmolality' AND compartment='Lumen' AND segment='LDL'
+            GROUP BY nephron""",
+        [scenario],
+    )
+    bends = dict(zip(bends["nephron"], bends["bend"]))
+    depths = loop_depths()
+    return [{"nephron": name, "depth": depths.get(name, (i + 1) / len(nephron_figure.LOOPS)),
+             "value": bends.get(name)}
+            for i, name in enumerate(nephron_figure.LOOPS)]
+
+
+def _plate_notes(scenario):
+    """What the figure says about the glomerulus and the macula densa: direct reads of the data."""
+    where = "compartment='Lumen' AND nephron='sup'"      # scalar() adds the scenario
+    flow = scalar(f"SELECT value FROM {DB} WHERE {where} AND variable='water_volume' "
+                  f"AND segment='PT' AND position=0", scenario)
+    osm = scalar(f"SELECT value FROM {DB} WHERE {where} AND variable='osmolality' "
+                 f"AND segment='PT' AND position=0", scenario)
+    sodium = scalar(f"SELECT value FROM {DB} WHERE {where} AND variable='con' AND solute='Na' "
+                    f"AND segment='cTAL' AND position=1", scenario)
+    notes = {}
+    if flow and osm:
+        notes["glom"] = f"fluid enters the proximal tubule at {flow:.0f} nl/min, {osm:.0f} mOsm"
+    if sodium:
+        notes["md"] = f"lumen Na⁺ where the cTAL ends: {sodium:.0f} mM"
+    return notes
+
+
 with figure:
     values = _plate_values(scenario)
     missing = [code for code in nephron_figure.ORDER if code not in values]
+    # a click on a segment opens its profile; a click on a long loop opens that nephron's LDL
+    links = {code: nav.href("segment", segment=code) for code in nephron_figure.ORDER}
+    links.update({name: nav.href("segment", segment="LDL", nephron=name) for name in nephron_figure.LOOPS})
     st.markdown(
-        "<figure class='nd-plate'>" + nephron_figure.plate(values) +
-        "<figcaption><b>Fig. 1.</b> The superficial nephron of the model and the collecting duct it "
+        "<figure class='nd-plate'>"
+        + nephron_figure.plate(values, names=segment_names(), links=links,
+                               loops=_plate_loops(scenario), notes=_plate_notes(scenario))
+        + "<figcaption><b>Fig. 1.</b> The superficial nephron of the model and the collecting duct it "
         "drains into. The tint and the numbers are the osmolality of the tubular fluid (mOsm) where "
         f"it leaves each segment, in <i>{SCENARIO_LABEL.get(scenario, scenario)}</i>; change the "
-        "scenario in the left panel and the figure follows. "
+        "scenario in the left panel and the figure follows. In hairline: the long loops of the five "
+        "juxtamedullary nephrons, to the relative depths the model gives them. "
         + (f"{', '.join(missing)} did not converge in this scenario (n.c.). " if missing else "")
         + "Schematic, not to scale; the model has no vasculature, so none is drawn.</figcaption></figure>",
         unsafe_allow_html=True,

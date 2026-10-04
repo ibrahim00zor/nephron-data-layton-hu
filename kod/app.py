@@ -12,7 +12,8 @@ import streamlit as st
 import nav
 import nephron_figure
 import style
-from ui_kit import APP_NAME, apply_frame, colophon, render_sidebar
+from clinical_cases import CASES
+from ui_kit import APP_NAME, NEPHRONS, apply_frame, colophon, options, render_sidebar, scenario_list
 
 # Menu: pages grouped into the two worlds (model / clinical) plus data & quality.
 page_objects = {
@@ -37,6 +38,14 @@ st.set_page_config(
 )
 st.logo(nephron_figure.mark(), size="large")
 apply_frame()
+
+# A link carries a selection (see nav.href): take it once, when the session starts.
+segments, solutes = options()
+nav.read_url({
+    "scenario": scenario_list(), "compare": scenario_list(), "case": list(CASES),
+    "solute": solutes, "segment": segments, "nephron": NEPHRONS,
+    "compartment": ["Lumen", "Cell", "Bath"],
+})
 render_sidebar()
 nav.render_origin()
 if nav.PAGES[current]["section"]:
@@ -46,3 +55,4 @@ selected.run()
 
 nav.render_explore_bar()
 colophon()
+nav.write_url()     # the address now says what this page shows

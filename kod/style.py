@@ -221,16 +221,31 @@ hr {{ border: 0; border-top: 1px solid {RULE}; margin: 1.5rem 0 1.3rem; }}
 }}
 .nd-cite a {{ color: {MUTED}; }}
 
-table.nd-ledger {{ width: 100%; border-collapse: collapse; margin: 0.2rem 0 0.6rem; }}
-table.nd-ledger td {{ border: 0; border-top: 1px solid {RULE}; padding: 0.55rem 0.9rem 0.55rem 0; vertical-align: baseline; }}
-table.nd-ledger tr:last-child td {{ border-bottom: 1px solid {RULE}; }}
-table.nd-ledger td.name {{ font-weight: 600; width: 34%; }}
-table.nd-ledger td.value {{ font-family: {MONO}; font-size: 0.88rem; }}
-table.nd-ledger td.target {{ color: {MUTED}; font-size: 0.88rem; }}
-table.nd-ledger td.mark {{ font-family: {MONO}; font-size: 0.8rem; text-align: right; padding-right: 0; white-space: nowrap; }}
-table.nd-ledger td.mark.pass {{ color: {GOOD}; }}
-table.nd-ledger td.mark.fail {{ color: {ACCENT}; font-weight: 500; }}
-table.nd-ledger td.mark.quiet {{ color: {FAINT}; }}
+.nd-ledger {{ margin: 0.2rem 0 0.6rem; border-bottom: 1px solid {RULE}; }}
+.nd-ledger .row {{ border-top: 1px solid {RULE}; }}
+.nd-ledger summary, .nd-ledger .cells {{
+  display: grid; grid-template-columns: 34% 1fr 1fr auto; column-gap: 0.9rem; align-items: baseline;
+  padding: 0.55rem 0;
+}}
+.nd-ledger summary {{ cursor: pointer; list-style: none; }}
+.nd-ledger summary::-webkit-details-marker {{ display: none; }}
+.nd-ledger .name {{ font-weight: 600; transition: color 0.15s; }}
+.nd-ledger summary .name::after {{
+  content: "+"; font-family: {MONO}; font-weight: 400; font-size: 0.78rem; color: {FAINT}; margin-left: 0.45rem;
+}}
+.nd-ledger details[open] summary .name::after {{ content: "−"; }}
+.nd-ledger summary:hover .name {{ color: {ACCENT}; }}
+.nd-ledger .value {{ font-family: {MONO}; font-size: 0.88rem; }}
+.nd-ledger .target {{ color: {MUTED}; font-size: 0.88rem; }}
+.nd-ledger .mark {{ font-family: {MONO}; font-size: 0.8rem; text-align: right; white-space: nowrap; }}
+.nd-ledger .mark.pass {{ color: {GOOD}; }}
+.nd-ledger .mark.fail {{ color: {ACCENT}; font-weight: 500; }}
+.nd-ledger .mark.quiet {{ color: {FAINT}; }}
+.nd-ledger .how {{
+  margin: 0 0 0.85rem calc(34% + 0.9rem); padding-left: 0.8rem; border-left: 1px solid {RULE};
+  color: {INK_SOFT}; font-size: 0.92rem; line-height: 1.5; max-width: 38rem;
+}}
+.nd-ledger .how a {{ white-space: nowrap; }}
 
 .nd-ref {{ padding-left: 1.5rem; text-indent: -1.5rem; margin: 0.7rem 0; font-size: 0.95rem; line-height: 1.5; }}
 .nd-ref .nd-label {{ margin-right: 0.45rem; }}
@@ -253,6 +268,52 @@ figure.nd-plate figcaption b {{ color: {INK_SOFT}; font-weight: 600; }}
   font-size: 0.84rem; color: {MUTED}; line-height: 1.6;
 }}
 .nd-colophon b {{ color: {INK_SOFT}; font-weight: 600; }}
+.nd-print {{ font-family: {MONO}; font-size: 0.74rem; border-bottom: 1px dotted {FAINT}; cursor: help; }}
+
+/* ---------- terms that explain themselves under the pointer ---------- */
+abbr[title] {{ text-decoration: none; border-bottom: 1px dotted {FAINT}; cursor: help; }}
+
+/* ---------- the link beside a title: a pilcrow; a click also copies the address ---------- */
+[data-testid="stHeaderActionElements"] a {{
+  text-decoration: none; display: inline-block; width: 0; overflow: visible; white-space: nowrap;   /* takes no room in the line */
+}}
+[data-testid="stHeaderActionElements"] a svg {{ display: none; }}
+[data-testid="stHeaderActionElements"] a::after {{
+  content: "¶"; font-family: {SERIF}; font-weight: 400; font-size: 0.72em; color: {FAINT};
+  margin-left: 0.35rem; transition: color 0.15s;
+}}
+[data-testid="stHeaderActionElements"] a:hover::after {{ color: {ACCENT}; }}
+#nd-flash {{
+  position: fixed; left: 50%; bottom: 1.6rem; transform: translate(-50%, 0.6rem); z-index: 1000000;
+  background: {INK}; color: {PAPER}; font-family: {MONO}; font-size: 0.74rem; letter-spacing: 0.04em;
+  padding: 0.45rem 0.85rem; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none;
+}}
+#nd-flash.on {{ opacity: 1; transform: translate(-50%, 0); }}
+
+/* ---------- the keys card (shown by "?") ---------- */
+.nd-keys {{
+  display: none; position: fixed; right: 1.4rem; bottom: 1.4rem; width: 20rem; z-index: 999999;
+  background: {PAPER}; border: 1px solid {INK_SOFT}; box-shadow: 4px 4px 0 {RULE_SOFT};
+  padding: 0.8rem 1rem 0.75rem; text-align: left;
+}}
+body.nd-keys-on .nd-keys {{ display: block; }}
+.nd-keys dl {{
+  display: grid; grid-template-columns: 1.5rem 1fr; gap: 0.3rem 0.6rem; margin: 0.55rem 0 0.6rem;
+  font-size: 0.88rem; color: {INK}; align-items: baseline;
+}}
+.nd-keys dt {{
+  font-family: {MONO}; font-size: 0.78rem; text-align: center; border: 1px solid {RULE};
+  height: 1.4rem; line-height: 1.3rem;
+}}
+.nd-keys dd {{ margin: 0; line-height: 1.35; }}
+
+/* ---------- a row of small nephrons, one per scenario ---------- */
+.nd-six {{ display: flex; flex-wrap: wrap; gap: 0.6rem 1.7rem; margin: 0.5rem 0 1rem; }}
+.nd-six figure {{ margin: 0; display: flex; flex-direction: column; align-items: center; }}
+.nd-six figcaption {{
+  font-family: {MONO}; font-size: 0.68rem; color: {MUTED}; margin-top: 0.35rem; text-align: center; line-height: 1.4;
+}}
+.nd-six figcaption i {{ display: block; font-style: normal; color: {ACCENT}; }}
 .nd-colophon a {{ color: {MUTED}; }}
 .nd-where {{ display: flex; gap: 0.9rem; align-items: center; }}
 .nd-side-title {{ font-size: 1.12rem; font-weight: 600; line-height: 1.2; margin-bottom: 0.1rem; }}
@@ -302,10 +363,16 @@ def pending(text):
 
 
 def ledger(rows):
-    """A ruled list of checks. rows: (name, value, target, mark, mark_class)."""
-    body = "".join(
-        f"<tr><td class='name'>{html.escape(name)}</td><td class='value'>{html.escape(value)}</td>"
-        f"<td class='target'>{html.escape(target)}</td><td class='mark {css}'>{html.escape(mark)}</td></tr>"
-        for name, value, target, mark, css in rows
-    )
-    st.markdown(f"<table class='nd-ledger'>{body}</table>", unsafe_allow_html=True)
+    """A ruled list of checks. rows: (name, value, target, mark, mark_class[, how]).
+    With `how` (HTML), the row opens on a click and says how the check is computed."""
+    parts = []
+    for name, value, target, mark, css, *rest in rows:
+        cells = (f"<span class='name'>{html.escape(name)}</span><span class='value'>{html.escape(value)}</span>"
+                 f"<span class='target'>{html.escape(target)}</span>"
+                 f"<span class='mark {css}'>{html.escape(mark)}</span>")
+        if rest and rest[0]:
+            parts.append(f"<details class='row'><summary>{cells}</summary>"
+                         f"<div class='how'>{rest[0]}</div></details>")
+        else:
+            parts.append(f"<div class='row'><div class='cells'>{cells}</div></div>")
+    st.markdown(f"<div class='nd-ledger'>{''.join(parts)}</div>", unsafe_allow_html=True)

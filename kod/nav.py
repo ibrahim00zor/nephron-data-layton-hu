@@ -13,6 +13,9 @@ Two ideas live here:
    pick on one page is what the next page opens with. Widgets are bound to it with
    `select()` / `multiselect()`, and `go()` jumps to another page with a chosen context.
 """
+import os
+from urllib.parse import urlencode
+
 import streamlit as st
 
 # ============================================================
@@ -186,6 +189,75 @@ def render_origin():
     if right.button(f"← Back to {title(origin['from'])}", key="_nav_back", width="stretch"):
         st.session_state.pop(_ORIGIN_KEY, None)
         st.switch_page(path(origin["from"]))
+
+
+# ============================================================
+#  The selection in the address bar
+# ============================================================
+# The address of a page always carries the selection it shows (only what differs from the
+# defaults), so copying the address gives a link to exactly this view. A link opened in a
+# new session is read once, at its start. The drawings link to pages the same way.
+URL_FIELDS = ("scenario", "solute", "segment", "nephron", "compartment", "compare", "case")
+_URL_READ = "_nav_url_read"
+
+
+def url_path(page):
+    """Address of a page: the name of its file; the Home page is the root."""
+    if page == "home":
+        return "./"
+    return os.path.splitext(os.path.basename(PAGES[page]["path"]))[0]
+
+
+def query(**changes):
+    """The selection (with `changes` applied) as URL parameters, defaults left out."""
+    out = {}
+    for name in URL_FIELDS:
+        value = changes.get(name, get(name))
+        if value != DEFAULTS[name]:
+            out[name] = ",".join(value) if isinstance(value, (list, tuple)) else str(value)
+    return out
+
+
+def href(page=None, **changes):
+    """Link to `page` (this page if omitted) on the current selection with `changes` applied."""
+    params = urlencode(query(**changes))
+    return url_path(page or current_page()) + (f"?{params}" if params else "")
+
+
+def read_url(allowed):
+    """Once per session: take the selection from the address. `allowed` lists the values
+    each field may take; anything else in the address is ignored."""
+    if st.session_state.get(_URL_READ):
+        return
+    st.session_state[_URL_READ] = True
+    for name in URL_FIELDS:
+        raw = st.query_params.get(name)
+        if raw is None:
+            continue
+        if isinstance(DEFAULTS[name], list):
+            values = [v for v in raw.split(",") if v in allowed.get(name, ())]
+            if values:
+                put(**{name: values})
+        elif raw in allowed.get(name, ()):
+            put(**{name: raw})
+
+
+def write_url():
+    """Every run: keep the address in step with the selection."""
+    wanted = query()
+    if st.query_params.to_dict() != wanted:
+        st.query_params.from_dict(wanted)
+
+
+def neighbours(order, name="segment"):
+    """Links to the previous and the next value of a field along `order` (None at the ends)."""
+    current = get(name)
+    if current not in order:
+        return None, None
+    i = order.index(current)
+    before = href(**{name: order[i - 1]}) if i > 0 else None
+    after = href(**{name: order[i + 1]}) if i < len(order) - 1 else None
+    return before, after
 
 
 def selection_summary():

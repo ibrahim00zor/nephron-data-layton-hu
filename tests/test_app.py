@@ -17,6 +17,7 @@ an in-app jump (st.switch_page) on the next interaction. `jump()` below therefor
 the button and then tells AppTest which page it landed on.
 """
 import os
+import re
 import sys
 
 from streamlit.testing.v1 import AppTest
@@ -90,7 +91,8 @@ def test_selection_travels_between_pages():
     main_select(at, "Solute").select("urea").run()
     main_select(at, "Segment").select("mTAL").run()
     main_select(at, "Nephron").select("jux3").run()
-    assert "urea · mTAL · jux3" in " ".join(m.value for m in at.sidebar.markdown)
+    shown = re.sub(r"<[^>]+>", "", " ".join(m.value for m in at.sidebar.markdown))
+    assert "urea · mTAL · jux3" in shown
 
     ok(at.switch_page(nav.path("comparison")).run())
     assert main_select(at, "Solute").value == "urea"

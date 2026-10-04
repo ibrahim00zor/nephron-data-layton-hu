@@ -57,8 +57,9 @@ SCENARIO_DETAIL = {
 #  Page frame (called once per run by app.py, before the page body)
 # ============================================================
 def apply_frame():
-    """Chart template and stylesheet shared by every page (see style.py)."""
+    """Chart template and stylesheets shared by every page (see style.py, nephron_figure.py)."""
     style.apply()
+    st.markdown(nephron_figure.STYLES, unsafe_allow_html=True)
 
 # ============================================================
 #  Query helpers (cached)
@@ -141,6 +142,98 @@ def segment_broken(scenario, segment):
     return segment in integrity_map().get(scenario, set())
 
 # ============================================================
+#  Names behind the abbreviations
+# ============================================================
+NEPHRON_NAME = {
+    "sup": "superficial nephron",
+    "jux1": "juxtamedullary nephron 1 of 5 (shortest long loop)",
+    "jux2": "juxtamedullary nephron 2 of 5",
+    "jux3": "juxtamedullary nephron 3 of 5",
+    "jux4": "juxtamedullary nephron 4 of 5",
+    "jux5": "juxtamedullary nephron 5 of 5 (longest loop)",
+    "merged": "the collecting duct, shared by all nephrons",
+}
+COMPARTMENT_NAME = {
+    "Lumen": "the tubular fluid",
+    "Cell": "inside the epithelial cell",
+    "Bath": "the interstitium around the tubule",
+    "LIS": "the lateral intercellular space",
+}
+
+
+def segment_names():
+    """Segment code -> full name (from the educational layer)."""
+    from education import SEGMENT
+    return {code: info["full_name"] for code, info in SEGMENT.items() if info.get("full_name")}
+
+
+def abbr(text, meaning=None):
+    """A term that explains itself under the pointer."""
+    text = html.escape(str(text))
+    return f"<abbr title='{html.escape(meaning, quote=True)}'>{text}</abbr>" if meaning else text
+
+
+def selection_with_names():
+    from education import SOLUTE
+    solute, segment, nephron, compartment = (nav.get(name) for name in nav.SELECTION)
+    return " · ".join((
+        abbr(solute, SOLUTE.get(solute, {}).get("full_name")),
+        abbr(segment, segment_names().get(segment)),
+        abbr(nephron, NEPHRON_NAME.get(nephron)),
+        abbr(compartment, COMPARTMENT_NAME.get(compartment)),
+    ))
+
+
+def loop_depths():
+    """How deep the long loop of each juxtamedullary nephron reaches, relative to the deepest
+    (from the length the model gives its long descending limb in the baseline scenario)."""
+    df = q(f"SELECT nephron, max(value) AS length FROM {DB} "
+           f"WHERE variable='length' AND segment='LDL' AND condition=? GROUP BY nephron",
+           [nav.DEFAULTS["scenario"]])
+    longest = df["length"].max() if not df.empty else None
+    if not longest:
+        return {}
+    return {row.nephron: row.length / longest for row in df.itertuples()}
+
+
+@st.cache_data
+def build_id():
+    """Commit the running code was set from, read from .git without calling git ("" if unknown)."""
+    git = os.path.join(PROJ, ".git")
+    try:
+        with open(os.path.join(git, "HEAD")) as f:
+            head = f.read().strip()
+        if not head.startswith("ref:"):
+            return head
+        ref = head.split(" ", 1)[1]
+        path = os.path.join(git, ref)
+        if os.path.exists(path):
+            with open(path) as f:
+                return f.read().strip()
+        with open(os.path.join(git, "packed-refs")) as f:
+            for line in f:
+                if line.strip().endswith(ref):
+                    return line.split(" ", 1)[0]
+    except OSError:
+        pass
+    return ""
+
+
+@st.cache_data
+def dataset_fingerprint():
+    """SHA-256 of the dataset file: two copies with the same fingerprint hold the same numbers."""
+    import hashlib
+    digest = hashlib.sha256()
+    try:
+        with open(PARQUET, "rb") as f:
+            for block in iter(lambda: f.read(1 << 20), b""):
+                digest.update(block)
+    except OSError:
+        return ""
+    return digest.hexdigest()
+
+
+# ============================================================
 #  Sidebar (rendered once per run by app.py, below the page menu)
 # ============================================================
 def render_sidebar():
@@ -173,12 +266,24 @@ def render_sidebar():
 
         # The selection that travels with the user across pages
         st.markdown("---")
+        segment, nephron = nav.get("segment"), nav.get("nephron")
+        long_loop = str(nephron).startswith("jux")
+        order = SEG_ORDER_JUX if long_loop else SEG_ORDER_SUP
+        # a click on the map selects that segment (the two thin limbs exist only in a long loop)
+        links = {code: nav.href(segment=code, **({} if long_loop or code not in ("LDL", "LAL")
+                                                  else {"nephron": "jux5"}))
+                 for code in SEG_ORDER_JUX}
+        before, after = nav.neighbours(order)
+        steps = "".join(f" data-{key}='{html.escape(link, quote=True)}'"
+                        for key, link in (("prev", before), ("next", after)) if link)
         st.markdown(
-            f"<div class='nd-where'>{nephron_figure.locator(nav.get('segment'))}"
-            f"<div><div class='nd-label'>Selection, kept across pages</div>"
+            f"<div class='nd-where'{steps}>"
+            + nephron_figure.locator(segment, links=links, names=segment_names(), long_loop=long_loop,
+                                     depth=loop_depths().get(nephron, 1.0))
+            + f"<div><div class='nd-label'>Selection, kept across pages</div>"
             f"<div class='nd-side-meta' style='font-size:0.8rem;color:{style.INK_SOFT};'>"
-            f"{nav.selection_summary()}</div>"
-            f"<div class='nd-side-meta'>marked: where {html.escape(str(nav.get('segment')))} lies</div>"
+            f"{selection_with_names()}</div>"
+            f"<div class='nd-side-meta'>marked: where {html.escape(str(segment))} lies</div>"
             f"</div></div>",
             unsafe_allow_html=True,
         )
@@ -253,9 +358,71 @@ def colophon():
         "handling in the human kidney.</i> iScience 24(6):102667.<br>"
         "Code under the MIT licence, content under CC BY 4.0. "
         "Set in Source Serif and IBM Plex Mono; built with Streamlit, DuckDB and Plotly."
-        "</div>",
+        f"{_imprint()}</div>{KEYS_CARD}",
         unsafe_allow_html=True,
     )
+    st.html(BEHAVIOUR, unsafe_allow_javascript=True)
+
+
+def _imprint():
+    """Which code and which data this page was made from, for anyone who needs to say exactly."""
+    parts = []
+    commit, data = build_id(), dataset_fingerprint()
+    if commit:
+        parts.append(f"build <span class='nd-print' title='commit {commit}'>{commit[:7]}</span>")
+    if data:
+        parts.append(f"dataset <span class='nd-print' title='sha256 {data}'>{data[:12]}</span>")
+    parts.append("<span class='nd-print' title='show the keyboard keys'>press ? for keys</span>")
+    return "<br>" + " · ".join(parts)
+
+
+# The keys (shown by "?"). Stepping is done with ordinary links, so it works like a click.
+KEYS_CARD = (
+    "<div class='nd-keys' role='note'><div class='nd-label'>Keys</div><dl>"
+    "<dt>]</dt><dd>next segment along the nephron</dd>"
+    "<dt>[</dt><dd>previous segment</dd>"
+    "<dt>¶</dt><dd>beside a page title: copy a link to this exact view</dd>"
+    "<dt>?</dt><dd>show or hide this card</dd>"
+    "</dl><div class='nd-side-meta'>The address of the page always carries your selection.</div></div>"
+)
+
+BEHAVIOUR = """<script>
+(function () {
+  if (window.__ndBehaviour) return;
+  window.__ndBehaviour = true;
+  function typing(e) {
+    var t = e.target;
+    return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+  }
+  function flash(message) {
+    var el = document.getElementById('nd-flash');
+    if (!el) { el = document.createElement('div'); el.id = 'nd-flash'; document.body.appendChild(el); }
+    el.textContent = message;
+    el.classList.add('on');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(function () { el.classList.remove('on'); }, 1800);
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey || typing(e)) return;
+    if (e.key === '?') { document.body.classList.toggle('nd-keys-on'); return; }
+    if (e.key === 'Escape') { document.body.classList.remove('nd-keys-on'); return; }
+    if (e.key === '[' || e.key === ']') {
+      var where = document.querySelector('.nd-where');
+      var to = where && (e.key === '[' ? where.dataset.prev : where.dataset.next);
+      if (to) { e.preventDefault(); window.location.href = to; }
+    }
+  });
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest && e.target.closest('[data-testid="stHeaderActionElements"] a');
+    if (!link || !navigator.clipboard) return;
+    setTimeout(function () {
+      navigator.clipboard.writeText(window.location.href).then(function () {
+        flash('link to this view copied');
+      });
+    }, 60);
+  });
+})();
+</script>"""
 
 # ============================================================
 #  Citation footer (under every chart)

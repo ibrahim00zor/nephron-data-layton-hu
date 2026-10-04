@@ -59,6 +59,37 @@ def test_figure_covers_the_segments_of_the_dataset():
     assert set(figure.LABELS) == set(figure.SEGMENTS)
 
 
+def test_plate_links_names_and_loops():
+    loops = [{"nephron": name, "depth": (i + 1) / 5, "value": 600 + 20 * i}
+             for i, name in enumerate(figure.LOOPS)]
+    links = {code: f"segment_profile?segment={code}&scenario=F_HT" for code in figure.ORDER}
+    links["jux3"] = "segment_profile?segment=LDL&nephron=jux3"
+    svg = figure.plate(VALUES, names={"mTAL": "Medullary Thick Ascending Limb"}, links=links,
+                       loops=loops, notes={"glom": "fluid enters at 100 nl/min", "md": "Na 26 mM"})
+    _parse(svg)                                   # '&' in links must be escaped
+    assert svg.count("target='_self'") == len(figure.ORDER) + 1
+    assert "Medullary Thick Ascending Limb" in svg and "580 → 253 mOsm" in svg
+    assert "640 mOsm at the bend" in svg and "fluid enters at 100 nl/min" in svg
+    for name in figure.LOOPS:                     # every loop can be pointed at
+        assert f"data-seg='{name}'" in svg, name
+
+
+def test_locator_links_and_struck_segments():
+    links = {code: f"?segment={code}&solute=K" for code in list(figure.SEGMENTS) + list(figure.GHOST)}
+    svg = figure.locator("PT", links=links, names={"IMCD": "Inner Medullary Collecting Duct"},
+                         struck={"IMCD"}, depth=0.4, long_loop=True)
+    _parse(svg)
+    assert svg.count("<a ") == 12
+    assert "Inner Medullary Collecting Duct (did not converge)" in svg
+    assert svg.count(figure.ACCENT) == 2          # the marked segment and the struck one
+    assert "<a " not in figure.locator("PT")      # without links it is only a picture
+
+
+def test_hover_styles_cover_everything_that_can_be_pointed_at():
+    for key in list(figure.SEGMENTS) + list(figure.LOOPS) + ["glom", "md"]:
+        assert f"[data-seg='{key}']:hover" in figure.STYLES, key
+
+
 def test_mark_is_well_formed():
     _parse(figure.mark())
     _parse(figure.mark(background="#ffffff"))

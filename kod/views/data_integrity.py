@@ -2,7 +2,8 @@
 import os
 import streamlit as st
 
-from ui_kit import q, DB, PARQUET
+import nephron_figure
+from ui_kit import q, DB, PARQUET, integrity_map, segment_names
 
 st.markdown("## Data Integrity")
 st.caption(f"Everything in the app is read from one tidy table, `{os.path.basename(PARQUET)}`. "
@@ -52,6 +53,18 @@ integ = q(f"""
         SUM(CASE WHEN variable='osmolality' AND compartment='Lumen' AND value < -1 THEN 1 ELSE 0 END) AS negative_osm
     FROM {DB} GROUP BY condition ORDER BY condition
 """)
+# One small nephron per scenario: the stretch that did not converge is struck out.
+broken = integrity_map()
+st.markdown(
+    "<div class='nd-six'>" + "".join(
+        "<figure>" + nephron_figure.locator(None, width=44, names=segment_names(),
+                                            struck=broken.get(code, ()))
+        + f"<figcaption>{code}"
+        + (f"<i>{', '.join(sorted(broken[code]))} not converged</i>" if broken.get(code) else "<br>complete")
+        + "</figcaption></figure>"
+        for code in integ["scenario"]) + "</div>",
+    unsafe_allow_html=True,
+)
 integ["status"] = integ.apply(
     lambda r: "clean" if (r["nan"] == 0 and r["negative_osm"] == 0)
     else "collecting duct did not converge (proximal segments fine)", axis=1)
