@@ -197,8 +197,8 @@ with c2:
 # ============================================================
 st.markdown("---")
 st.caption(
-    "Model: Hu R., et al. (2021). *Sex differences in solute and water handling in "
-    "the human kidney.* iScience 24(6):102694. &nbsp;·&nbsp; "
+    "Model: Hu R., McDonough A.A., Layton A.T. (2021). *Sex differences in solute and water "
+    "handling in the human kidney.* iScience 24(6):102667. &nbsp;·&nbsp; "
     "This tool: Zor İ. (2026). *Nephron Data (Layton/Hu).* Zenodo. "
     "doi:10.5281/zenodo.20489610 &nbsp;·&nbsp; "
     "License: MIT (code) + CC-BY 4.0 (content)"

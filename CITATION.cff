@@ -35,13 +35,39 @@ references:
     authors:
       - family-names: "Hu"
         given-names: "Rui"
+      - family-names: "McDonough"
+        given-names: "Alicia A."
       - family-names: "Layton"
         given-names: "Anita T."
     year: 2021
     journal: "iScience"
     volume: 24
     issue: 6
-    doi: "10.1016/j.isci.2021.102694"
+    doi: "10.1016/j.isci.2021.102667"
+  - type: article
+    title: "A computational model of epithelial solute and water transport along a human nephron"
+    authors:
+      - family-names: "Layton"
+        given-names: "Anita T."
+      - family-names: "Layton"
+        given-names: "Harold E."
+    year: 2019
+    journal: "PLoS Computational Biology"
+    volume: 15
+    issue: 2
+    doi: "10.1371/journal.pcbi.1006108"
+  - type: article
+    title: "A Computational Model of Kidney Function in a Patient with Diabetes"
+    authors:
+      - family-names: "Hu"
+        given-names: "Rui"
+      - family-names: "Layton"
+        given-names: "Anita"
+    year: 2021
+    journal: "International Journal of Molecular Sciences"
+    volume: 22
+    issue: 11
+    doi: "10.3390/ijms22115819"
   - type: software
     title: "nephron (mathematical model implementation)"
     authors:

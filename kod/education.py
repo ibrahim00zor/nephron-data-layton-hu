@@ -26,15 +26,15 @@ CITATIONS = {
     },
     "hu2021": {
         "short": "Hu et al. 2021",
-        "full":  "Hu, R., et al. (2021). Sex differences in solute and water handling "
-                 "in the human kidney. iScience 24(6):102694.",
+        "full":  "Hu, R., McDonough, A.A., Layton, A.T. (2021). Sex differences in solute and "
+                 "water handling in the human kidney. iScience 24(6):102667.",
         "url":   "https://www.sciencedirect.com/science/article/pii/S2589004221006350",
         "type":  "article",
     },
     "layton2019": {
         "short": "Layton & Layton 2019",
         "full":  "Layton, A.T., Layton, H.E. (2019). A computational model of epithelial "
-                 "solute and water transport along a human nephron. PLOS Comp Biol.",
+                 "solute and water transport along a human nephron. PLoS Comput Biol 15(2):e1006108.",
         "type":  "article",
     },
 }

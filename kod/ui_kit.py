@@ -221,9 +221,10 @@ def render_sidebar():
         with st.expander("Data source & citation"):
             st.markdown(
                 "**Model:** Layton/Hu (`mstadt/nephron`)\n\n"
-                "**Citation:** Hu R., et al. (2021). *Sex differences in solute and water "
-                "handling in the human kidney.* iScience 24(6):102694. "
-                "[doi:10.1016/j.isci.2021.102694](https://doi.org/10.1016/j.isci.2021.102694)\n\n"
+                "**Citation:** Hu R., McDonough A.A., Layton A.T. (2021). *Sex differences in solute "
+                "and water handling in the human kidney: Modeling and functional implications.* "
+                "iScience 24(6):102667. "
+                "[doi:10.1016/j.isci.2021.102667](https://doi.org/10.1016/j.isci.2021.102667)\n\n"
                 "**This project:** Zor, İ. (2026). *Nephron Data (Layton/Hu).* Zenodo. "
                 "[doi:10.5281/zenodo.20489610](https://doi.org/10.5281/zenodo.20489610)"
             )
@@ -259,7 +260,7 @@ def make_chart(df, x, y, color, title, xlab, ylab, color_label="Series",
 def cite_footer():
     st.markdown(
         "<div class='cite-footer'>"
-        "<b>Source:</b> Hu et al. 2021, <i>iScience</i> 24:102694 &nbsp;·&nbsp; "
+        "<b>Source:</b> Hu et al. 2021, <i>iScience</i> 24:102667 &nbsp;·&nbsp; "
         "<b>This tool:</b> Zor 2026, "
         "<a href='https://doi.org/10.5281/zenodo.20489610' target='_blank' "
         "style='color:#1e40af;text-decoration:none;'>doi:10.5281/zenodo.20489610</a> &nbsp;·&nbsp; "
@@ -279,13 +280,34 @@ def cite_footer():
 REFERENCES = {
     "hu2021": {
         "type": "Article",
-        "authors": "Hu R., Layton A.T.",
+        "authors": "Hu R., McDonough A.A., Layton A.T.",
         "year": 2021,
         "title": "Sex differences in solute and water handling in the human kidney: "
                  "Modeling and functional implications",
-        "source": "iScience 24(6):102694",
-        "doi": "10.1016/j.isci.2021.102694",
-        "note": "The mathematical model from which all data in this app is derived (primary source).",
+        "source": "iScience 24(6):102667",
+        "doi": "10.1016/j.isci.2021.102667",
+        "note": "The sex-specific human nephron model from which the data in this app is derived "
+                "(primary source).",
+    },
+    "layton2019": {
+        "type": "Article",
+        "authors": "Layton A.T., Layton H.E.",
+        "year": 2019,
+        "title": "A computational model of epithelial solute and water transport along a human nephron",
+        "source": "PLoS Computational Biology 15(2):e1006108",
+        "doi": "10.1371/journal.pcbi.1006108",
+        "note": "The first computational model of the human nephron, on which the sex-specific "
+                "model is built. Listed by the model's authors as the paper for the human model.",
+    },
+    "hu_layton2021": {
+        "type": "Article",
+        "authors": "Hu R., Layton A.",
+        "year": 2021,
+        "title": "A Computational Model of Kidney Function in a Patient with Diabetes",
+        "source": "International Journal of Molecular Sciences 22(11):5819",
+        "doi": "10.3390/ijms22115819",
+        "note": "Human diabetic-kidney model and SGLT2 inhibition. Listed by the model's authors "
+                "as the paper for the diabetic human model.",
     },
     "model_stadt": {
         "type": "Software",

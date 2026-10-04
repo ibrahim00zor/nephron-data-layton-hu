@@ -74,8 +74,14 @@ python tests/test_app.py
 All data is derived from the Layton/Hu human-nephron transport model. This project processes
 that model's output; it does not re-implement the model.
 
-- **Model:** Hu, R., et al. (2021). *Sex differences in solute and water handling in the human
-  kidney.* iScience 24(6):102694. https://doi.org/10.1016/j.isci.2021.102694
+- **Model (sex-specific human nephron):** Hu, R., McDonough, A.A., Layton, A.T. (2021). *Sex
+  differences in solute and water handling in the human kidney: Modeling and functional
+  implications.* iScience 24(6):102667. https://doi.org/10.1016/j.isci.2021.102667
+- **Base human model:** Layton, A.T., Layton, H.E. (2019). *A computational model of epithelial
+  solute and water transport along a human nephron.* PLoS Comput Biol 15(2):e1006108.
+  https://doi.org/10.1371/journal.pcbi.1006108
+- **Diabetic human model:** Hu, R., Layton, A. (2021). *A Computational Model of Kidney Function
+  in a Patient with Diabetes.* Int J Mol Sci 22(11):5819. https://doi.org/10.3390/ijms22115819
 - **Model code:** [`mstadt/nephron`](https://github.com/mstadt/nephron)
 
 **Units:** concentration mM · flux pmol/min · volume nl/min · osmolality mOsm · potential mV
@@ -137,5 +143,6 @@ If you use this project in academic work, please use the format in [`CITATION.cf
 
 The data is derived from the Hu et al. 2021 model. When citing this tool, also cite the original paper:
 
-> Hu, R., et al. (2021). *Sex differences in solute and water handling in the human kidney.*
-> iScience 24(6):102694. https://doi.org/10.1016/j.isci.2021.102694
+> Hu, R., McDonough, A.A., Layton, A.T. (2021). *Sex differences in solute and water handling
+> in the human kidney: Modeling and functional implications.* iScience 24(6):102667.
+> https://doi.org/10.1016/j.isci.2021.102667
