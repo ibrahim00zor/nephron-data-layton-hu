@@ -1,6 +1,6 @@
-"""7_Interaktif_Anatomi_BETA.py — Faz 4 D3.js Entegrasyon (v2)
-Anatomik nefron diagrami: ozmolalite gradyan arka plani, akisa gore dinamik
-kalinlik, ve konsantrasyon isi haritasi."""
+"""7_Interactive_Anatomy_BETA.py — D3.js integration (v2)
+Anatomic nephron diagram: osmolality-gradient background, dynamic thickness by flow,
+and a concentration heatmap."""
 import os
 import json
 import streamlit as st
@@ -8,28 +8,28 @@ import streamlit.components.v1 as components
 
 from ui_kit import (
     setup_page, render_sidebar, q, DB,
-    secenekler, NEPHRONS, segment_bozuk_mu, PROJ, CD_SEGMENTS
+    options, NEPHRONS, segment_broken, PROJ, CD_SEGMENTS
 )
 
-setup_page("İnteraktif Anatomi (BETA)")
-senaryo_aktif = render_sidebar()
+setup_page("Interactive Anatomy (BETA)")
+active_scenario = render_sidebar()
 
-st.markdown("## İnteraktif Anatomi (BETA)")
+st.markdown("## Interactive Anatomy (BETA)")
 st.caption(
-    "D3.js tabanlı anatomik nefron çizimi. "
-    "Segment renkleri seçilen solütün konsantrasyonunu (üstteki düğmeyle solüt **yüküne / akıya** çevrilebilir), "
-    "segment kalınlıkları tübüler su akışını (hacim), "
-    "arka plan gradyanı interstisyum ozmolalitesini yansıtır. "
-    "Akış animasyonu parçacık hızıyla su akışını verir; bir segmente tıklayınca profili grafiğe sabitlenir."
+    "D3.js-based anatomic nephron drawing. "
+    "Segment color shows the selected solute's concentration (switchable to solute **load / flux** "
+    "with the button on top), segment thickness shows tubular water flow (volume), "
+    "and the background gradient reflects interstitial osmolality. "
+    "The flow animation conveys water flow via particle speed; click a segment to pin its profile to the chart."
 )
 
-# --- Ust seciciler ---
+# --- Top selectors ---
 c1, c2, c3 = st.columns(3)
-_, sol = secenekler()
-solute = c1.selectbox("Solüt", sol, index=sol.index("Na") if "Na" in sol else 0)
-compartment = c2.selectbox("Kompartman", ["Lumen", "Cell", "Bath"], index=0)
+_, sol = options()
+solute = c1.selectbox("Solute", sol, index=sol.index("Na") if "Na" in sol else 0)
+compartment = c2.selectbox("Compartment", ["Lumen", "Cell", "Bath"], index=0)
 nephron_req = c3.selectbox(
-    "Nefron tipi (CD segmentleri otomatik 'merged' olur)",
+    "Nephron type (CD segments become 'merged' automatically)",
     NEPHRONS,
     index=NEPHRONS.index("sup"),
 )
@@ -37,7 +37,7 @@ nephron_req = c3.selectbox(
 st.markdown("---")
 
 # ============================================================
-# 1) Konsantrasyon verisi (segment renkleri icin)
+# 1) Concentration data (for segment colors)
 # ============================================================
 cd_segs = CD_SEGMENTS
 segments_data = {}
@@ -46,7 +46,7 @@ all_segs_raw = q(
     f"""SELECT DISTINCT segment FROM {DB}
         WHERE condition = ? AND variable='con' AND solute=?
         AND compartment=?""",
-    [senaryo_aktif, solute, compartment]
+    [active_scenario, solute, compartment]
 )
 
 for segment in all_segs_raw['segment'].tolist():
@@ -55,9 +55,9 @@ for segment in all_segs_raw['segment'].tolist():
         f"""SELECT position, value FROM {DB}
             WHERE condition=? AND variable='con' AND solute=? AND compartment=?
             AND segment=? AND nephron=? ORDER BY position""",
-        [senaryo_aktif, solute, compartment, segment, target_nephron]
+        [active_scenario, solute, compartment, segment, target_nephron]
     )
-    if df_seg.empty or segment_bozuk_mu(senaryo_aktif, segment):
+    if df_seg.empty or segment_broken(active_scenario, segment):
         continue
     if df_seg['value'].isna().any():
         continue
@@ -72,7 +72,7 @@ for segment in all_segs_raw['segment'].tolist():
     }
 
 if not segments_data:
-    st.warning("Seçilen filtreler için geçerli veri bulunamadı.")
+    st.warning("No valid data for the selected filters.")
     st.stop()
 
 # Global min/max for color scale
@@ -81,7 +81,7 @@ con_min = min(all_vals)
 con_max = max(all_vals)
 
 # ============================================================
-# 2) Su hacmi (flow) verisi (segment kalinliklari icin)
+# 2) Water-volume (flow) data (for segment thickness)
 # ============================================================
 flow_data = {}
 for segment in segments_data.keys():
@@ -90,7 +90,7 @@ for segment in segments_data.keys():
         f"""SELECT position, value FROM {DB}
             WHERE condition=? AND variable='water_volume' AND compartment='Lumen'
             AND segment=? AND nephron=? ORDER BY position""",
-        [senaryo_aktif, segment, target_nephron]
+        [active_scenario, segment, target_nephron]
     )
     if not df_flow.empty and df_flow['value'].notna().all():
         flow_data[segment] = {
@@ -105,10 +105,10 @@ flow_min = min(all_flows) if all_flows else 0
 flow_max = max(all_flows) if all_flows else 100
 
 # ============================================================
-# 2b) Solut YUKU (load = molar aki, pmol/min) — renk modu icin
+# 2b) Solute LOAD (load = molar flux, pmol/min) — for the color mode
 # ============================================================
-# Konsantrasyon yaniltir; emilim/iletim icin KUTLE (aki) bakilir. Bu mod, sayfa 8
-# bilim-denetimindeki "altin kural"i diagramda gorsel kilar.
+# Concentration misleads; for reabsorption/delivery look at MASS (flux). This mode makes
+# the "golden rule" from the page-8 science audit visible on the diagram.
 load_data = {}
 for segment in segments_data.keys():
     target_nephron = "merged" if segment in cd_segs else nephron_req
@@ -116,7 +116,7 @@ for segment in segments_data.keys():
         f"""SELECT position, value FROM {DB}
             WHERE condition=? AND variable='flow' AND solute=? AND compartment='Lumen'
             AND segment=? AND nephron=? ORDER BY position""",
-        [senaryo_aktif, solute, segment, target_nephron]
+        [active_scenario, solute, segment, target_nephron]
     )
     if not df_load.empty and df_load['value'].notna().all():
         load_data[segment] = {
@@ -134,18 +134,18 @@ load_min = min(all_loads) if all_loads else 0
 load_max = max(all_loads) if all_loads else 100
 
 # ============================================================
-# 3) Interstisyum (Bath) ozmolalite gradyani (arka plan icin)
+# 3) Interstitial (Bath) osmolality gradient (for the background)
 # ============================================================
-# Kortikal segmentler (sup), medullar segmentler (sup veya merged CD)
-# Amac: derinlige (y-koordinatina) gore ozmolalite gradyani
+# Cortical segments (sup), medullary segments (sup or merged CD)
+# Goal: an osmolality gradient by depth (y-coordinate)
 gradient_segments = [
-    ("PT",   "sup",    0.0),   # Korteks ust
-    ("cTAL", "sup",    0.15),  # Korteks alt
-    ("S3",   "sup",    0.28),  # Dis medulla ust siniri
-    ("mTAL", "sup",    0.40),  # Dis medulla orta
-    ("SDL",  "sup",    0.55),  # Dis medulla alt
-    ("OMCD", "merged", 0.55),  # Dis-ic medulla siniri
-    ("IMCD", "merged", 1.0),   # Papilla (en dip)
+    ("PT",   "sup",    0.0),   # Cortex top
+    ("cTAL", "sup",    0.15),  # Cortex bottom
+    ("S3",   "sup",    0.28),  # Outer-medulla upper boundary
+    ("mTAL", "sup",    0.40),  # Outer medulla middle
+    ("SDL",  "sup",    0.55),  # Outer medulla lower
+    ("OMCD", "merged", 0.55),  # Outer–inner medulla boundary
+    ("IMCD", "merged", 1.0),   # Papilla (deepest)
 ]
 
 gradient_stops = []
@@ -154,7 +154,7 @@ for seg, neph, frac in gradient_segments:
         f"""SELECT AVG(value) as avg_osm FROM {DB}
             WHERE condition=? AND variable='osmolality' AND compartment='Bath'
             AND segment=? AND nephron=?""",
-        [senaryo_aktif, seg, neph]
+        [active_scenario, seg, neph]
     )
     if not df_osm.empty and df_osm['avg_osm'].notna().iloc[0]:
         gradient_stops.append({
@@ -163,7 +163,7 @@ for seg, neph, frac in gradient_segments:
         })
 
 # ============================================================
-# 4) JSON paketini hazirla
+# 4) Build the JSON package
 # ============================================================
 injected_data = {
     "solute": solute,
@@ -181,14 +181,14 @@ injected_data = {
 }
 
 # ============================================================
-# 5) D3.js HTML sablonunu oku ve veriyi enjekte et
+# 5) Read the D3.js HTML template and inject the data
 # ============================================================
 html_path = os.path.join(PROJ, "kod", "d3_components", "nephron_diagram.html")
 try:
     with open(html_path, "r", encoding="utf-8") as f:
         html_template = f.read()
 except FileNotFoundError:
-    st.error(f"HTML şablonu bulunamadı: {html_path}")
+    st.error(f"HTML template not found: {html_path}")
     st.stop()
 
 json_str = json.dumps(injected_data, ensure_ascii=False)
@@ -196,9 +196,9 @@ html_rendered = html_template.replace("__INJECTED_DATA__", json_str)
 
 components.html(html_rendered, height=870, scrolling=False)
 
-# Model siniri notu (kullanicinin istegi: kisa, belirgin olmasin, uzerine dusen bulsun)
+# Model-limit note (kept short and understated by design; readers who dig will find it)
 st.caption(
-    "ℹ Arka plan gradyanı modelin hesapladığı interstisyum ozmolalitesine dayanır. "
-    "Layton/Hu modelinde papilla ozmolalitesi ~734 mOsm ile sınırlıdır; "
-    "in vivo değer ~1200 mOsm'dir (bilinen model sınırı, bkz. bulgular.md §0)."
+    "ℹ The background gradient is based on the interstitial osmolality the model computes. "
+    "In the Layton/Hu model, papillary osmolality is limited to ~734 mOsm; "
+    "the in-vivo value is ~1200 mOsm (a known model limit)."
 )

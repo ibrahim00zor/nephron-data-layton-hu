@@ -1,13 +1,13 @@
-# Yedek arşivleri yerel dursun (büyük, repo'ya gerek yok)
+# Local backup archives (large, not needed in the repo)
 yedekler/
 
-# Ham txt çıktıları yerel dursun — uygulama Parquet'i okuyor, ham gerekmez
-# (Reproducibility istenirse README'de yeniden üretme talimatı var)
+# Raw txt outputs stay local — the app reads Parquet, raw is not required
+# (Reproduction instructions are in the README if needed)
 veri/ham/
 veri/ham_scenarios/
 
-# Büyük veri arşivi (~90MB) — repo'ya girmemeli; yanlış `git add .`'i önler
-# GitHub 100MB'da dosyayı reddeder, 50MB'da uyarır
+# Large data archive (~90MB) — must not enter the repo; guards against a stray `git add .`
+# GitHub rejects files at 100MB and warns at 50MB
 veri.zip
 *.zip
 
@@ -18,7 +18,7 @@ __pycache__/
 .venv/
 venv/
 
-# macOS / editör
+# macOS / editor
 .DS_Store
 .vscode/
 .idea/
@@ -26,27 +26,15 @@ venv/
 # Streamlit
 .streamlit/secrets.toml
 
-# editör cruft
+# editor cruft
 .Rhistory
 
-# Kişisel günlük — public repo'da paylaşılmaz, sadece lokal düzen için
-notlar/gunluk.md
+# Working notes and project journals — kept local, not part of the public repo
+notlar/
+BASLA_BURADAN.md
 
-# Ufuk hipotezi — özgün, geliştirilmemiş fikir; öncelik koruması için lokal/gizli
-notlar/ufuk_hipotezi.md
+# Local tooling (Claude Code launch config, etc.)
+.claude/
 
-# Klinik vizyon — özgün ana strateji; geliştirilmekte, öncelik koruması için lokal/gizli
-notlar/klinik_vizyon.md
-
-# Düşünce defteri — kişisel felsefi notlar; lokal/gizli
-notlar/dusunce_defteri.md
-
-# Okuma listesi — kişisel çalışma planı; lokal/gizli
-notlar/okuma_listesi.md
-
-# Segment atlası — TASLAK bilimsel belge; literatür iddiaları henüz çift-kontrol
-# edilmedi (yalnız PT, S3 doğrulandı). Beraber doğrulanınca public yapılabilir.
-notlar/segment_atlasi.md
-
-# D3 onizleme render (gecici, veri enjekte edilmis; repo disi)
+# D3 preview render (temporary, data injected; out of repo)
 kod/d3_components/_onizleme_render.html

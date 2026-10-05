@@ -1,17 +1,17 @@
 """
-veri_kontrol.py  —  Senaryo veri butunlugu denetcisi.
+veri_kontrol.py  —  Scenario data-integrity checker.
 
-Modelin Newton cozucusu bazi senaryolarda (ozellikle toplayici kanal / merged
-hesabinda) yakinsamayabilir; sonuc NaN veya fiziksel olarak imkansiz negatif
-deger (negatif osmolalite/hacim) olur. Bu betik her senaryoyu tarar ve guvenilir
-olup olmadigini raporlar.
+The model's Newton solver may fail to converge for some scenarios (especially the
+collecting duct / merged computation); the result is then NaN or a physically impossible
+negative value (negative osmolality/volume). This script scans each scenario and reports
+whether it is reliable.
 
-Verdict siniflari:
-  TEMIZ           -> NaN yok, negatif osmolalite/hacim yok (eser-solut ~0 gurultusu kabul)
-  PROKSIMAL_OK    -> tek nefronlar saglam ama toplayici kanal (merged/IMCD) bozuk
-  BOZUK           -> yaygin NaN / negatif osmolalite
+Verdict classes:
+  CLEAN         -> no NaN, no negative osmolality/volume (trace-solute ~0 noise accepted)
+  PROXIMAL_OK   -> single nephrons are sound but the collecting duct (merged/IMCD) is broken
+  BROKEN        -> widespread NaN / negative osmolality
 
-Calistirmak icin:  python3 kod/veri_kontrol.py
+Run with:  python3 kod/veri_kontrol.py
 """
 import os
 import duckdb
@@ -21,7 +21,7 @@ PROJ_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PARQUET   = os.path.join(PROJ_ROOT, "veri", "nephron_veritabani.parquet")
 DB        = f"'{PARQUET}'"
 
-# Negatif olamayacak degiskenler (fiziksel)
+# Variables that cannot be negative (physical)
 NONNEG = ('osmolality', 'water_volume')
 
 
@@ -30,20 +30,20 @@ def q(sql):
 
 
 def scenario_report():
-    """Senaryo basina butunluk metrikleri + verdict."""
-    # Yakinsama gostergeleri: NaN ve negatif Lumen osmolalitesi (solut toplami).
-    # NOT: IMCD merged'de Cell-kompartman hacmi ayri bir model artefaktiyla negatif
-    # cikar ama Lumen (idrar yolu) saglamdir; bu yuzden hacim icin yalniz Lumen sayilir.
+    """Per-scenario integrity metrics + verdict."""
+    # Convergence indicators: NaN and negative Lumen osmolality (solute total).
+    # NOTE: in IMCD merged the Cell-compartment volume comes out negative due to a separate
+    # model artifact, but the Lumen (urinary path) is sound; so only Lumen counts for volume.
     df = q(f"""
         SELECT condition,
             SUM(CASE WHEN value IS NULL OR isnan(value) THEN 1 ELSE 0 END) AS nan,
             SUM(CASE WHEN variable='osmolality' AND compartment='Lumen' AND value < -1 THEN 1 ELSE 0 END) AS neg_osm,
-            SUM(CASE WHEN variable='water_volume' AND compartment='Lumen' AND value < -0.001 THEN 1 ELSE 0 END) AS neg_lumen_hacim
+            SUM(CASE WHEN variable='water_volume' AND compartment='Lumen' AND value < -0.001 THEN 1 ELSE 0 END) AS neg_lumen_vol
         FROM {DB}
         GROUP BY condition ORDER BY condition
     """)
 
-    # Bozukluk hangi segment/nefronlarda? (Lumen-temelli gercek yakinsama hatasi)
+    # Which segments/nephrons are broken? (Lumen-based genuine convergence failure)
     bad_loc = q(f"""
         SELECT DISTINCT condition, segment, nephron
         FROM {DB}
@@ -56,32 +56,32 @@ def scenario_report():
     verdicts = []
     for _, r in df.iterrows():
         cond = r['condition']
-        n_bad = int(r['nan'] + r['neg_osm'] + r['neg_lumen_hacim'])
+        n_bad = int(r['nan'] + r['neg_osm'] + r['neg_lumen_vol'])
         if n_bad == 0:
-            v = "TEMIZ"
+            v = "CLEAN"
         else:
             locs = bad_loc[bad_loc['condition'] == cond]
-            # Sadece toplayici kanal (merged) ve son segmentler mi etkilenmis?
+            # Only the collecting duct (merged) and last segments affected?
             distal = {'IMCD', 'OMCD', 'CCD', 'CNT', 'DCT'}
-            etkilenen = set(locs['segment'])
-            if etkilenen <= distal:
-                v = "PROKSIMAL_OK (toplayici kanal bozuk)"
+            affected = set(locs['segment'])
+            if affected <= distal:
+                v = "PROXIMAL_OK (collecting duct broken)"
             else:
-                v = "BOZUK"
+                v = "BROKEN"
         verdicts.append(v)
     df['verdict'] = verdicts
     return df, bad_loc
 
 
 if __name__ == "__main__":
-    print(f"Kaynak: {os.path.basename(PARQUET)}\n")
+    print(f"Source: {os.path.basename(PARQUET)}\n")
     df, bad_loc = scenario_report()
     print(df.to_string(index=False))
     print()
     if not bad_loc.empty:
-        print("Bozukluk konumlari (senaryo -> etkilenen segmentler):")
+        print("Breakage locations (scenario -> affected segments):")
         for cond in bad_loc['condition'].unique():
             segs = sorted(set(bad_loc[bad_loc['condition'] == cond]['segment']))
             print(f"  {cond:<12} {segs}")
-    temiz = df[df['verdict'] == 'TEMIZ']['condition'].tolist()
-    print(f"\nGuvenle kullanilabilir (tam temiz): {temiz}")
+    clean = df[df['verdict'] == 'CLEAN']['condition'].tolist()
+    print(f"\nSafe to use (fully clean): {clean}")

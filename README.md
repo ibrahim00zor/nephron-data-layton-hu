@@ -1,161 +1,116 @@
-# Nefron Veri Gezgini
+# Nephron Data (Layton/Hu)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20489610.svg)](https://doi.org/10.5281/zenodo.20489610)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: CC BY 4.0](https://img.shields.io/badge/Content-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 [![Streamlit App](https://img.shields.io/badge/Live-Streamlit%20App-FF4B4B?logo=streamlit&logoColor=white)](https://nefron-veri-gezgini.streamlit.app)
 
-İnsan nefronu epitelyal transport modelinin (Layton/Hu) çıktılarını, doktorlar ve
-araştırmacılar için **atıf yapılabilir, interaktif bir bilim/görselleştirme aracına**
-dönüştürme projesi.
+An interactive, citable science tool that turns the output of the Layton/Hu human-nephron
+epithelial transport model into an explorable data application for clinicians, students, and
+researchers.
 
-**📌 Atıf:** Zor, İ. (2026). *Nefron Veri Gezgini.* Zenodo. https://doi.org/10.5281/zenodo.20489610
+**Live app:** https://nefron-veri-gezgini.streamlit.app
 
-> Bu klasör senin "ana üssün". Kafan karışınca buraya dön — her şeyin yeri burada yazılı.
+**Citation:** Zor, İ. (2026). *Nephron Data (Layton/Hu).* Zenodo. https://doi.org/10.5281/zenodo.20489610
 
 ---
 
-## Klasör haritası
+## What it does
+
+The app visualizes the model output for **6 scenarios** — healthy female and male, moderate
+diabetes, hypertension, and SGLT2 inhibitor (female and male). It traces the concentration
+profile along each nephron segment, separates mass and volume changes, checks physiology
+automatically, and provides an educational clinical layer.
+
+**Pages**
+
+| Page | Purpose |
+|---|---|
+| Segment Profile | One solute in one segment; Lumen+Bath overlay; automatic mass/volume interpretation |
+| Whole Nephron | Chained flow chart from PT → IMCD |
+| Nephron Types | Superficial vs juxtamedullary (jux1–5): the effect of depth |
+| Comparison | Several scenarios overlaid, with a difference table |
+| Validation | Automatic physiology checks against textbook expectations |
+| Data Integrity | Database inventory, convergence status, known limits |
+| Interactive Anatomy (BETA) | D3.js anatomic diagram: color by concentration/load, thickness by flow |
+| Clinical | Educational case interface (mechanism, drug/dose, model data) — *not medical advice* |
+
+---
+
+## Quick start
+
+```bash
+pip install -r requirements.txt
+streamlit run kod/app.py
+```
+
+The app reads a single tidy Parquet file (`veri/nephron_veritabani.parquet`, 6 scenarios).
+
+---
+
+## Data & model provenance
+
+All data is derived from the Layton/Hu human-nephron transport model. This project processes
+that model's output; it does not re-implement the model.
+
+- **Model:** Hu, R., et al. (2021). *Sex differences in solute and water handling in the human
+  kidney.* iScience 24(6):102694. https://doi.org/10.1016/j.isci.2021.102694
+- **Model code:** [`mstadt/nephron`](https://github.com/mstadt/nephron)
+
+**Units:** concentration mM · flux pmol/min · volume nl/min · osmolality mOsm · potential mV
+
+---
+
+## Repository structure
 
 ```
-Nefron-Projesi/
-├── README.md          <- BU DOSYA (her şeyin haritası)
-├── BASLA_BURADAN.md   <- Yeni oturum açış prompt'u (bağlam aktarımı)
-├── LICENSE / LICENSE-CONTENT / CITATION.cff   <- Akademik altyapı
+.
+├── README.md
+├── LICENSE / LICENSE-CONTENT / CITATION.cff   # academic infrastructure
+├── requirements.txt
 ├── veri/
-│   ├── ham_scenarios/ <- Senaryo başına ham txt çıktıları (repo dışı, .gitignore)
-│   └── nephron_veritabani.parquet  <- 6 senaryo tek tidy tablo (6.198.390 satır)
-├── kod/
-│   ├── app.py             <- Anasayfa (Streamlit landing)
-│   ├── ui_kit.py          <- Paylaşılan: sidebar, sorgu, grafik, atıf footer'ı
-│   ├── egitim_icerigi.py  <- Eğitim içeriği (Türkmen 2024 paraphrase + cite)
-│   ├── yorum_motoru.py    <- Otomatik kütle/hacim yorum ayrıştırıcı
-│   ├── build_database.py  <- Ham txt -> tidy Parquet (çoklu senaryo)
-│   ├── run_scenarios.py   <- Senaryo üretici (resumable)
-│   ├── veri_kontrol.py    <- Veri bütünlüğü denetçisi (yakınsama kontrolü)
-│   ├── pages/             <- 1 Segment · 2 Tüm Nefron · 3 Tipler · 4 Karşılaştırma
-│   │                         5 Doğrulamalar · 6 Veri Bütünlüğü
-│   │                         7 İnteraktif Anatomi (BETA) · 8 Klinik (eğitim arayüzü)
-│   └── d3_components/     <- nephron_diagram.html (D3.js anatomik şablon)
-├── notlar/
-│   ├── gunluk.md      <- Kronolojik proje hikayesi (faz faz)
-│   ├── bulgular.md    <- Bilimsel bulgular + kararlar
-│   ├── terminoloji.md <- Segment / taşıyıcı / solüt sözlüğü
-│   └── versiyonlar.md <- Reprodüksiyon için sabit sürümler
-└── yedekler/          <- Zaman damgalı yedekler ("sıfır noktaları")
-```
-
-**Modelin kendisi (hesaplama motoru) burada DEĞİL:** `~/nephron/` klasöründe.
-Orası yeni simülasyonların çalıştığı yer. Bu proje, oradan çıkan veriyi işler.
-
----
-
-## Mimari kararı (neden böyle)
-
-- **Dil:** Python (model zaten Python).
-- **Veri biçimi:** tidy/long tablo (veri düzensiz olduğu için doğru seçim).
-- **Depolama:** Parquet (sıkıştırılmış, hızlı, dil-bağımsız, atıf'a uygun).
-- **Sorgu:** DuckDB (SQL) — ölçekte hızlı + aynı sorgular ileride tarayıcıda (DuckDB-WASM) çalışır.
-- **Arayüz:** Önce Streamlit (öğrenilebilir, doğrulanabilir) → sonra Observable + D3 (atıf'lı interaktif görsel).
-
----
-
-## Sık kullanılan komutlar
-
-Yeni simülasyon çalıştırmak (motor klasöründe, TEMİZ bir hedefe):
-```
-cd ~/nephron
-python3 parallel_simulate.py --sex female --species human --type multiple
-```
-
-Çıktıyı projeye almak + veritabanını yeniden kurmak:
-```
-cp ~/nephron/female_hum_normal/*.txt ~/Desktop/Nefron-Projesi/veri/ham/
-cd ~/Desktop/Nefron-Projesi
-python3 kod/build_database.py
-```
-
-Veritabanını SQL ile sorgulamak (örnek):
-```
-python3 -c "import duckdb; print(duckdb.sql(\"SELECT DISTINCT segment FROM 'veri/nephron_veritabani.parquet'\").df())"
+│   └── nephron_veritabani.parquet   # 6 scenarios, one tidy table
+└── kod/
+    ├── app.py             # home (Streamlit landing)
+    ├── ui_kit.py          # shared: sidebar, query, chart, citation footer
+    ├── education.py       # educational content (segment/transporter/solute)
+    ├── interpretation.py  # automatic mass/volume interpretation
+    ├── build_database.py  # raw txt -> tidy Parquet (multi-scenario)
+    ├── run_scenarios.py   # scenario generator (resumable)
+    ├── veri_kontrol.py    # data-integrity checker (convergence)
+    ├── pages/             # the 8 pages above
+    └── d3_components/     # nephron_diagram.html (D3.js anatomic template)
 ```
 
 ---
 
-## Önemli uyarılar (unutma)
+## Known limits
 
-1. **Append-bug:** Modelin taşıyıcı akı dosyaları 'ekleme' modunda yazılır. Aynı klasöre
-   iki kez simülasyon çalıştırırsan bozulur. **Her zaman temiz/boş klasöre çalıştır.**
-2. **Çok-membranlı flux dosyaları (ÇÖZÜLDÜ):** CNT/CCD/OMCD'de bazı taşıyıcılar
-   (AE1, HATPase, HKATPase, NHE1) birden çok hücre membranına aittir; model bunları tek
-   dosyaya içe içe geçmiş (interleaved) yazar. Loader artık stride ile ayrıştırıp her profili
-   doğru pozisyon eksenine oturtuyor ve `membrane` kolonunda anatomik kompartman çiftiyle
-   etiketliyor. (bkz. notlar/bulgular.md)
+- **Inner-medullary gradient:** the model's papillary osmolality peaks at ~734 mOsm; the
+  in-vivo value is ~1200 mOsm. The inner-medullary concentrating mechanism is not fully
+  reproduced by mathematical models — a known open problem.
+- **Scenario library 6/10:** four target scenarios (F_diab_severe, F_ACE, F_obese, F_UNX)
+  failed to converge in the model's Newton solver (numerical overflow).
+- **Non-converged distal segments** are hidden in the charts; distal/urine claims are only
+  reliable for clean scenarios (see the Data Integrity page).
 
 ---
 
-## Lisans
+## License
 
-İkili lisanslama (akademik standart — PLOS, eLife, NIH gibi):
+Dual-licensed (academic standard):
 
-- **Kod** (`kod/` içindekiler) → [**MIT License**](LICENSE)
-  - Kullan, değiştir, dağıt, ticari kullan — atıf'la
-- **İçerik / veri / figürler** (`notlar/`, `veri/*.parquet`, ekran görüntüleri) →
-  [**Creative Commons Attribution 4.0 (CC-BY 4.0)**](LICENSE-CONTENT)
-  - Paylaş, uyarla, ticari kullan — atıf'la
+- **Code** (`kod/`) → [MIT License](LICENSE) — use, modify, distribute, including commercially, with attribution.
+- **Content / data / figures** → [Creative Commons Attribution 4.0 (CC-BY 4.0)](LICENSE-CONTENT) — share, adapt, including commercially, with attribution.
 
-## Atıf (Citation)
+## Citation
 
-Bu projeyi akademik çalışmada kullanıyorsan, [`CITATION.cff`](CITATION.cff) dosyasındaki
-formatı kullan. Kısa biçim:
+If you use this project in academic work, please use the format in [`CITATION.cff`](CITATION.cff). Short form:
 
-> Zor, İ. (2026). *Nefron Veri Gezgini* (Computer software).
+> Zor, İ. (2026). *Nephron Data (Layton/Hu)* (Computer software).
 > https://github.com/ibrahim00zor/nefron-veri-gezgini
 
-**Önemli:** Bu projenin verisi Hu et al. 2021 modelinden türetilmiştir. Verimize atıf
-yaparken **orijinal makaleyi de** referans göster:
+The data is derived from the Hu et al. 2021 model. When citing this tool, also cite the original paper:
 
-> Hu, R., et al. (2021). *Sex differences in solute and water handling in the
-> human kidney.* iScience 24(6):102694.
-> https://doi.org/10.1016/j.isci.2021.102694
-
-## Mevcut durum (Faz 25 — 2026-06)
-
-Tamamlanan:
-- [x] Model bulundu, kuruldu, çalıştı (sup + jux1-5 + merged)
-- [x] Ham veri tidy Parquet'e çevrildi (6 senaryo, 6.198.390 satır, 0 hata)
-- [x] Fizyolojik doğrulamalar yapıldı (bkz. bulgular.md)
-- [x] 6 senaryo: F_normal, M_normal, F_diab_mod, F_HT, F_SGLT2, M_SGLT2
-- [x] Multi-page Streamlit + paylaşılan ui_kit + eğitim katmanı + otomatik yorum
-- [x] Akademik altyapı: MIT + CC-BY 4.0 + CITATION.cff + Zenodo DOI
-- [x] Streamlit Cloud canlı: nefron-veri-gezgini.streamlit.app
-- [x] Çok-membranlı flux dosyaları membran başına ayrıldı (Görev #4 — `membrane` kolonu)
-- [x] Veri bütünlüğü guard'ı: yakınsamayan distal segmentler gizleniyor (Faz 21-22)
-- [x] Faz 24 — D3.js interaktif anatomi prototipi (sayfa 7, BETA)
-- [x] Faz 25 — klinik senaryolar / hekim eğitici aracı (sayfa 8, BETA)
-- [x] Faz 25.1 — sayfa 8 bilim-denetimi: "yük" anlatımı akıya (flow, pmol/min) çevrildi,
-      makula densa mTAL → cTAL düzeltildi, metindeki sayılar veriden dinamik hesaplanıyor
-
-Açık / sonraki:
-- [ ] `egitim_icerigi.py` özet alanlarını doldur (Türkmen 2024 paraphrase + cite)
-- [ ] `segment_atlasi.md` maratonu (12 segment) — şu an yalnız PT, S3 doğrulandı
-- [ ] Hu et al. 2021 ile gradyan (~734 mOsm) karşılaştırması
-- [ ] 4 başarısız senaryo (Newton overflow): F_diab_severe, F_ACE, F_obese, F_UNX
-
----
-
-## Sıfır noktaları (geri dönülebilir checkpoint disiplini)
-
-Proje istenmeyen yöne kayarsa **bilinen-iyi bir noktaya** dönmek için iki katmanlı sistem:
-
-1. **Git tag** (asıl sıfır noktası — hafif, isimli, GitHub'da):
-   - `v1.0.0` — Zenodo DOI release
-   - `v-fazNN` — her milestone kapanışında (örn. `v-faz19.1`)
-   - Geri dönüş: `git checkout v-faz19.1` (incele) · sıfırlamak için `git reset --hard v-faz19.1`
-   - Liste: `git tag -l`
-2. **Zip yedek** (lokal, veri dahil — `yedekler/`):
-   - `yedek_lite_*` (kod+notlar+parquet, ~5-35MB) — her milestone
-   - `yedek_FULL_*` (her şey + ham veri) — ayda 1-2 kez
-   - Komut README altındaki "yedek alma" kuralında.
-
-**Kural:** Her faz kapanışında → commit + `v-fazNN` tag + lite yedek + `gunluk.md`'ye giriş.
+> Hu, R., et al. (2021). *Sex differences in solute and water handling in the human kidney.*
+> iScience 24(6):102694. https://doi.org/10.1016/j.isci.2021.102694

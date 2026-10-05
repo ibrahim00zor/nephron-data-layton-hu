@@ -1,23 +1,23 @@
 """
-app.py — Nefron Veri Gezgini · Anasayfa
+app.py — Nephron Data (Layton/Hu) · Home
 
-Streamlit multi-page mimaride ana dosya. Soldaki sayfa menusunden alt sayfalara gecilir.
+Main file in the Streamlit multi-page layout. Sub-pages are reached from the left menu.
 """
 import streamlit as st
 import plotly.express as px
 
 from ui_kit import setup_page, render_sidebar, q, DB
 
-setup_page("Anasayfa")
-senaryo = render_sidebar()
+setup_page("Home")
+scenario = render_sidebar()
 
 # ============================================================
-#  Baslik + atif kart
+#  Title + citation card
 # ============================================================
 st.markdown(
-    "<h1 style='margin-bottom:0.2rem;letter-spacing:-0.02em;'>Nefron Veri Gezgini</h1>"
+    "<h1 style='margin-bottom:0.2rem;letter-spacing:-0.02em;'>Nephron Data (Layton/Hu)</h1>"
     "<div style='color:#6b7280;font-size:1.02rem;margin-bottom:1.2rem;'>"
-    "İnsan nefronu epitelyal transport modelinin interaktif veri gezgini"
+    "Interactive data explorer for a human-nephron epithelial transport model"
     "</div>",
     unsafe_allow_html=True,
 )
@@ -29,11 +29,11 @@ st.markdown("""
     <div>
       <div style="font-size:0.74rem;color:#6b7280;text-transform:uppercase;
                   letter-spacing:0.08em;font-weight:600;">
-        Atıf yapılabilir bilim aracı
+        Citable science tool
       </div>
       <div style="font-weight:500;color:#1f2937;font-size:1rem;margin-top:4px;
                   font-family:Georgia,serif;">
-        Zor, İ. (2026). Nefron Veri Gezgini. <i>Zenodo</i>.
+        Zor, İ. (2026). Nephron Data (Layton/Hu). <i>Zenodo</i>.
       </div>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -54,39 +54,39 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-#  Tanitim
+#  Introduction
 # ============================================================
-st.markdown("#### Bu araç ne yapar")
+st.markdown("#### What this tool does")
 st.markdown(
-    "Layton/Hu insan nefron modelinin (Hu et al. 2021, *iScience*) çıktılarını "
-    "**6 senaryo** için &mdash; sağlıklı kadın ve erkek, orta diyabet, hipertansiyon, "
-    "SGLT2 inhibitörü (♀ ve ♂) &mdash; interaktif olarak görselleştirir. "
-    "Her segment boyunca konsantrasyon profilini çıkarır, kütle ve hacim ayrıştırması "
-    "yapar, fizyolojik yorumu otomatik üretir."
+    "Visualizes the output of the Layton/Hu human-nephron model (Hu et al. 2021, *iScience*) "
+    "interactively for **6 scenarios** &mdash; healthy female and male, moderate diabetes, "
+    "hypertension, and SGLT2 inhibitor (♀ and ♂). "
+    "It traces the concentration profile along each segment, separates mass and volume, "
+    "and generates the physiological interpretation automatically."
 )
 st.markdown("")
 
 # ============================================================
-#  Ornek sorular
+#  Example questions
 # ============================================================
-st.markdown("#### Örnek sorular")
-st.caption("Aşağıdaki üç kartın her biri bir araştırma sorusunu somut grafikle temsil eder. "
-           "Detaylı analiz için sol menüden ilgili sayfaya geç.")
+st.markdown("#### Example questions")
+st.caption("Each of the three cards below represents a research question as a concrete chart. "
+           "For detailed analysis, go to the relevant page from the left menu.")
 
 q1, q2, q3 = st.columns(3)
 
-# Kart 1: Cinsiyet farki
+# Card 1: Sex difference
 with q1:
     df = q(
-        f"""SELECT position, value, condition AS seri FROM {DB}
+        f"""SELECT position, value, condition AS series FROM {DB}
             WHERE variable='con' AND solute='Na' AND segment='mTAL'
                   AND compartment='Lumen' AND nephron='sup'
                   AND condition IN ('F_normal','M_normal')
             ORDER BY condition, position""",
         [],
     )
-    df["seri"] = df["seri"].map({"F_normal": "♀", "M_normal": "♂"})
-    fig = px.line(df, x="position", y="value", color="seri", height=170,
+    df["series"] = df["series"].map({"F_normal": "♀", "M_normal": "♂"})
+    fig = px.line(df, x="position", y="value", color="series", height=170,
                   color_discrete_map={"♀": "#dc2626", "♂": "#1e40af"})
     fig.update_layout(margin=dict(l=10, r=10, t=5, b=5),
                       legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center",
@@ -95,26 +95,26 @@ with q1:
     fig.update_traces(line=dict(width=2.2))
     st.markdown(
         "<div style='border-left:3px solid #dc2626;padding-left:10px;margin-bottom:4px;'>"
-        "<b>Cinsiyet farkı</b><br>"
-        "<span style='color:#6b7280;font-size:0.85rem;'>mTAL lümen Na &mdash; ♀ vs ♂</span>"
+        "<b>Sex difference</b><br>"
+        "<span style='color:#6b7280;font-size:0.85rem;'>mTAL lumen Na &mdash; ♀ vs ♂</span>"
         "</div>", unsafe_allow_html=True,
     )
-    st.plotly_chart(fig, use_container_width=True)
-    st.caption("→ Detay: **Nefron Tipleri** veya **Karşılaştırma**")
+    st.plotly_chart(fig, width='stretch')
+    st.caption("→ Detail: **Nephron Types** or **Comparison**")
 
-# Kart 2: Diyabet
+# Card 2: Diabetes
 with q2:
     df = q(
-        f"""SELECT position, value, condition AS seri FROM {DB}
+        f"""SELECT position, value, condition AS series FROM {DB}
             WHERE variable='con' AND solute='glu' AND segment='PT'
                   AND compartment='Lumen' AND nephron='sup'
                   AND condition IN ('F_normal','F_diab_mod')
             ORDER BY condition, position""",
         [],
     )
-    df["seri"] = df["seri"].map({"F_normal": "Normal", "F_diab_mod": "Diyabet"})
-    fig = px.line(df, x="position", y="value", color="seri", height=170,
-                  color_discrete_map={"Normal": "#059669", "Diyabet": "#d97706"})
+    df["series"] = df["series"].map({"F_normal": "Normal", "F_diab_mod": "Diabetes"})
+    fig = px.line(df, x="position", y="value", color="series", height=170,
+                  color_discrete_map={"Normal": "#059669", "Diabetes": "#d97706"})
     fig.update_layout(margin=dict(l=10, r=10, t=5, b=5),
                       legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center",
                                   title_text=""),
@@ -122,14 +122,14 @@ with q2:
     fig.update_traces(line=dict(width=2.2))
     st.markdown(
         "<div style='border-left:3px solid #d97706;padding-left:10px;margin-bottom:4px;'>"
-        "<b>Diyabet etkisi</b><br>"
-        "<span style='color:#6b7280;font-size:0.85rem;'>PT lümen glukoz &mdash; normal vs diyabet</span>"
+        "<b>Diabetes effect</b><br>"
+        "<span style='color:#6b7280;font-size:0.85rem;'>PT lumen glucose &mdash; normal vs diabetes</span>"
         "</div>", unsafe_allow_html=True,
     )
-    st.plotly_chart(fig, use_container_width=True)
-    st.caption("→ Detay: **Karşılaştırma**")
+    st.plotly_chart(fig, width='stretch')
+    st.caption("→ Detail: **Comparison**")
 
-# Kart 3: Medulla gradyani
+# Card 3: Medullary gradient
 with q3:
     df = q(
         f"""SELECT position, value, segment FROM {DB}
@@ -147,56 +147,56 @@ with q3:
     fig.update_traces(line=dict(width=2.2))
     st.markdown(
         "<div style='border-left:3px solid #1e40af;padding-left:10px;margin-bottom:4px;'>"
-        "<b>Medüller gradyan</b><br>"
-        "<span style='color:#6b7280;font-size:0.85rem;'>İnterstisyum osmolalite, CCD → IMCD</span>"
+        "<b>Medullary gradient</b><br>"
+        "<span style='color:#6b7280;font-size:0.85rem;'>Interstitial osmolality, CCD → IMCD</span>"
         "</div>", unsafe_allow_html=True,
     )
-    st.plotly_chart(fig, use_container_width=True)
-    st.caption("→ Detay: **Tüm Nefron**")
+    st.plotly_chart(fig, width='stretch')
+    st.caption("→ Detail: **Whole Nephron**")
 
 # ============================================================
-#  Kullanim klavuzu
+#  How to use
 # ============================================================
 st.markdown("---")
-st.markdown("#### Nasıl kullanılır")
+st.markdown("#### How to use")
 st.markdown("""
-1. **Sol panelden** *Aktif senaryo* seç (varsayılan: sağlıklı kadın). Sayfa değiştirsen bile seçim korunur.
-2. **Sol menüden sayfa** seç:
-   - **Segment Profili** — tek segmentte tek solüt, Lumen+Bath bindirme, otomatik kütle/hacim yorumu
-   - **Tüm Nefron** — PT → IMCD zincirli akış grafiği
-   - **Nefron Tipleri** — sup ve jux1–5 (derinliğin etkisi)
-   - **Karşılaştırma** — birden çok senaryoyu üst üste (örn. normal vs diyabet)
-   - **Doğrulamalar** — modelin ders kitabıyla uyumu otomatik test
-   - **Veri Bütünlüğü** — kategoriler, bilinen sınırlar
-3. Her grafiğin altında atıf bilgisi (kaynak + DOI) hazır.
+1. **In the left panel,** pick an *Active scenario* (default: healthy female). The selection is kept even when you change pages.
+2. **Pick a page** from the left menu:
+   - **Segment Profile** — one solute in one segment, Lumen+Bath overlay, automatic mass/volume interpretation
+   - **Whole Nephron** — chained flow chart from PT → IMCD
+   - **Nephron Types** — sup and jux1–5 (effect of depth)
+   - **Comparison** — several scenarios overlaid (e.g. normal vs diabetes)
+   - **Validation** — automatic test of the model's agreement with the textbook
+   - **Data Integrity** — categories, known limits
+3. Citation info (source + DOI) is available under every chart.
 """)
 
 # ============================================================
-#  Sinirlar
+#  Limits
 # ============================================================
 st.markdown("---")
-st.markdown("#### Bilinen sınırlar")
+st.markdown("#### Known limits")
 c1, c2 = st.columns(2)
 with c1:
     st.markdown(
         "<div style='border:1px solid #e5e7eb;border-left:3px solid #6b7280;"
         "padding:10px 14px;border-radius:4px;'>"
-        "<b style='color:#374151;'>Model sınırı</b><br>"
+        "<b style='color:#374151;'>Model limit</b><br>"
         "<span style='color:#4b5563;font-size:0.92rem;'>"
-        "İç medulla osmotik gradyanı ~734 mOsm; literatür ~1200 mOsm (maks ADH). "
-        "İç medulla konsantrasyon mekanizması matematiksel modellerce "
-        "<b>tam üretilemiyor</b> — açık problem.</span>"
+        "Inner-medullary osmotic gradient ~734 mOsm; literature ~1200 mOsm (max ADH). "
+        "The inner-medullary concentrating mechanism is <b>not fully reproduced</b> by "
+        "mathematical models — an open problem.</span>"
         "</div>", unsafe_allow_html=True,
     )
 with c2:
     st.markdown(
         "<div style='border:1px solid #e5e7eb;border-left:3px solid #6b7280;"
         "padding:10px 14px;border-radius:4px;'>"
-        "<b style='color:#374151;'>Senaryo kütüphanesi</b><br>"
+        "<b style='color:#374151;'>Scenario library</b><br>"
         "<span style='color:#4b5563;font-size:0.92rem;'>"
-        "6 senaryo başarılı (10 hedeflenmişti). 4 senaryo Newton overflow ile "
-        "yakınsamadı: F_diab_severe, F_ACE, F_obese, F_UNX. "
-        "Modelin <b>sayısal sınırı</b>.</span>"
+        "6 scenarios succeeded (10 were targeted). 4 scenarios failed to converge with "
+        "Newton overflow: F_diab_severe, F_ACE, F_obese, F_UNX. "
+        "A <b>numerical limit</b> of the model.</span>"
         "</div>", unsafe_allow_html=True,
     )
 
@@ -207,7 +207,7 @@ st.markdown("---")
 st.caption(
     "Model: Hu R., et al. (2021). *Sex differences in solute and water handling in "
     "the human kidney.* iScience 24(6):102694. &nbsp;·&nbsp; "
-    "Bu araç: Zor İ. (2026). *Nefron Veri Gezgini.* Zenodo. "
+    "This tool: Zor İ. (2026). *Nephron Data (Layton/Hu).* Zenodo. "
     "doi:10.5281/zenodo.20489610 &nbsp;·&nbsp; "
-    "Lisans: MIT (kod) + CC-BY 4.0 (içerik)"
+    "License: MIT (code) + CC-BY 4.0 (content)"
 )

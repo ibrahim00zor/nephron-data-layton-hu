@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -75,17 +75,17 @@
 <body>
   <div style="position:relative;">
     <div id="controls">
-      <button id="mode-btn" class="ctrl-btn">Renk: Konsantrasyon</button>
-      <button id="flow-btn" class="ctrl-btn alt">Akış: Açık</button>
-      <button id="toggle-chart-btn" class="ctrl-btn">Grafiği Aç</button>
+      <button id="mode-btn" class="ctrl-btn">Color: Concentration</button>
+      <button id="flow-btn" class="ctrl-btn alt">Flow: On</button>
+      <button id="toggle-chart-btn" class="ctrl-btn">Open chart</button>
     </div>
     <div id="main-container">
       <div id="diagram-panel"><div id="diagram"></div></div>
       <div id="chart-panel">
         <div class="chart-header">
-          <span id="chart-title">Segment Profili</span>
+          <span id="chart-title">Segment Profile</span>
         </div>
-        <div class="chart-hint" id="chart-hint">Segment üzerine gelin (tıklayınca sabitlenir)</div>
+        <div class="chart-hint" id="chart-hint">Hover over a segment (click to pin)</div>
         <div id="chart-area"></div>
       </div>
     </div>
@@ -107,7 +107,7 @@
     const defs = svg.append("defs");
 
     // ============================================================
-    // Kortikomeduller ozmolalite gradyan arka plani
+    // Corticomedullary osmolality gradient background
     // ============================================================
     const stops = D.gradient_stops || [];
     if (stops.length >= 2) {
@@ -132,9 +132,9 @@
           .attr("stroke", "#d4a574").attr("stroke-width", 0.8)
           .attr("stroke-dasharray", "6,4").attr("opacity", 0.5);
       });
-      svg.append("text").attr("class", "zone-label").attr("x", 12).attr("y", 25).text("Korteks");
-      svg.append("text").attr("class", "zone-label").attr("x", 12).attr("y", H * 0.28 + 18).text("Dış Medulla");
-      svg.append("text").attr("class", "zone-label").attr("x", 12).attr("y", H * 0.57 + 18).text("İç Medulla");
+      svg.append("text").attr("class", "zone-label").attr("x", 12).attr("y", 25).text("Cortex");
+      svg.append("text").attr("class", "zone-label").attr("x", 12).attr("y", H * 0.28 + 18).text("Outer Medulla");
+      svg.append("text").attr("class", "zone-label").attr("x", 12).attr("y", H * 0.57 + 18).text("Inner Medulla");
 
       const osmLegH = 300, osmLegX = W - 55, osmLegY = H * 0.35;
       const osmLegGrad = defs.append("linearGradient")
@@ -153,7 +153,7 @@
     }
 
     // ============================================================
-    // Anatomik nefron topolojisi
+    // Anatomic nephron topology
     // ============================================================
     const topo = {
       "PT":   { pts: [[120,135],[140,120],[170,140],[200,125],[230,140],[255,128],[275,145]], baseW: 12 },
@@ -186,7 +186,7 @@
     };
 
     // ============================================================
-    // Skalalar
+    // Scales
     // ============================================================
     const flowMin = D.flow_min || 0.5, flowMax = D.flow_max || 100;
     const thickScale = d3.scaleLinear().domain([flowMin, flowMax]).range([3, 20]).clamp(true);
@@ -211,7 +211,7 @@
     svg.append("text").attr("x", 130).attr("y", 108).attr("font-size", "9px").attr("fill", "#9ca3af").text("→ Eff");
 
     // ============================================================
-    // Segmentler (geometri SABIT; renk modu sadece stroke'u degistirir)
+    // Segments (geometry FIXED; the color mode only changes the stroke)
     // ============================================================
     const lineGen = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
     const tooltip = d3.select("#tooltip");
@@ -222,7 +222,7 @@
       return true;
     });
 
-    // Her segment icin con + load gradyanlarini onceden olustur (mod degisince yeniden uretmeyiz)
+    // Pre-build the con + load gradients for each segment (not regenerated on mode change)
     function makeGrad(id, pts, scale, vEntry, vExit) {
       const g = defs.append("linearGradient").attr("id", id)
         .attr("gradientUnits", "userSpaceOnUse")
@@ -259,17 +259,17 @@
           let html = `<div class='tt-title'>${seg}</div><hr>`;
           if (segCon) {
             html += `
-              <div class='tt-row'><span class='tt-label'>Kons. giriş</span><span class='tt-val'>${segCon.entry.toFixed(1)} mM</span></div>
-              <div class='tt-row'><span class='tt-label'>Kons. çıkış</span><span class='tt-val'>${segCon.exit.toFixed(1)} mM</span></div>`;
+              <div class='tt-row'><span class='tt-label'>Conc. inlet</span><span class='tt-val'>${segCon.entry.toFixed(1)} mM</span></div>
+              <div class='tt-row'><span class='tt-label'>Conc. outlet</span><span class='tt-val'>${segCon.exit.toFixed(1)} mM</span></div>`;
           }
           if (segLoad) {
             html += `<hr>
-              <div class='tt-row'><span class='tt-label'>Yük giriş</span><span class='tt-val'>${segLoad.entry.toFixed(0)} pmol/min</span></div>
-              <div class='tt-row'><span class='tt-label'>Yük çıkış</span><span class='tt-val'>${segLoad.exit.toFixed(0)} pmol/min</span></div>`;
+              <div class='tt-row'><span class='tt-label'>Load inlet</span><span class='tt-val'>${segLoad.entry.toFixed(0)} pmol/min</span></div>
+              <div class='tt-row'><span class='tt-label'>Load outlet</span><span class='tt-val'>${segLoad.exit.toFixed(0)} pmol/min</span></div>`;
           }
           if (segFlow) {
             html += `<hr>
-              <div class='tt-row'><span class='tt-label'>Su akışı (ort)</span><span class='tt-val'>${segFlow.mean.toFixed(1)} nl/min</span></div>`;
+              <div class='tt-row'><span class='tt-label'>Water flow (avg)</span><span class='tt-val'>${segFlow.mean.toFixed(1)} nl/min</span></div>`;
           }
           tooltip.html(html).style("opacity", 1)
             .style("left", (event.pageX + 18) + "px").style("top", (event.pageY - 30) + "px");
@@ -290,10 +290,10 @@
     }
 
     // ============================================================
-    // Makula densa isareti + TGF geri-bildirim bagi
+    // Macula densa marker + TGF feedback link
     // ============================================================
-    // Makula densa = cTAL'in kortikal ucu (cikis, ~350,145), kendi glomerulunun
-    // vaskuler kutbuna komsu. TGF: bu sensorden afferent arteriyole geri sinyal.
+    // Macula densa = the cortical end of cTAL (outlet, ~350,145), adjacent to the
+    // vascular pole of its own glomerulus. TGF: a signal from this sensor back to the afferent arteriole.
     defs.append("marker").attr("id", "tgf-arrow")
       .attr("viewBox", "0 0 10 10").attr("refX", 8).attr("refY", 5)
       .attr("markerWidth", 6).attr("markerHeight", 6).attr("orient", "auto-start-reverse")
@@ -308,10 +308,10 @@
 
     svg.append("circle").attr("cx", 350).attr("cy", 146).attr("r", 4.5)
       .attr("fill", "#fde68a").attr("stroke", "#7c2d12").attr("stroke-width", 1.4);
-    svg.append("text").attr("class", "md-label").attr("x", 350).attr("y", 132).attr("text-anchor", "middle").text("Makula Densa");
+    svg.append("text").attr("class", "md-label").attr("x", 350).attr("y", 132).attr("text-anchor", "middle").text("Macula Densa");
 
     // ============================================================
-    // Akis parcaciklari (hiz ∝ su akisi); geometri sabit oldugu icin guvenli
+    // Flow particles (speed ∝ water flow); safe because geometry is fixed
     // ============================================================
     const durScale = d3.scaleLinear().domain([flowMin, flowMax]).range([7.0, 2.2]).clamp(true);
     const particleG = svg.append("g").attr("id", "particles").attr("class", "particle");
@@ -333,7 +333,7 @@
     }
 
     // ============================================================
-    // Renk lejandi (mod'a gore yeniden cizilir)
+    // Color legend (redrawn per mode)
     // ============================================================
     function renderColorLegend() {
       svg.select("#color-legend").remove();
@@ -341,7 +341,7 @@
       const vmin = isLoad ? loadMin : conMin;
       const vmax = isLoad ? loadMax : conMax;
       const sc   = isLoad ? loadColor : conColor;
-      const title = isLoad ? `${D.solute} Yükü (pmol/min)` : `${D.solute} Konsantrasyon (mM)`;
+      const title = isLoad ? `${D.solute} Load (pmol/min)` : `${D.solute} Concentration (mM)`;
       const gid = isLoad ? "leg-grad-load" : "leg-grad-con";
       if (defs.select(`#${gid}`).empty()) {
         const lg = defs.append("linearGradient").attr("id", gid);
@@ -357,9 +357,9 @@
       g.append("text").attr("class", "legend-tick").attr("x", cLegW).attr("y", cLegH + 12).attr("text-anchor", "end").text(vmax.toFixed(0));
     }
 
-    // Kalinlik lejandi (her zaman su akisi)
+    // Thickness legend (always water flow)
     const fLeg = svg.append("g").attr("transform", `translate(${W - 220}, 58)`);
-    fLeg.append("text").attr("class", "legend-title").attr("y", -4).text("Kalınlık ∝ Su Akışı (nl/min)");
+    fLeg.append("text").attr("class", "legend-title").attr("y", -4).text("Thickness ∝ Water Flow (nl/min)");
     fLeg.append("line").attr("x1", 0).attr("y1", 10).attr("x2", 30).attr("y2", 10)
       .attr("stroke", "#9ca3af").attr("stroke-width", 3).attr("stroke-linecap", "round");
     fLeg.append("text").attr("class", "legend-tick").attr("x", 35).attr("y", 14).text(flowMin.toFixed(1));
@@ -368,10 +368,10 @@
     fLeg.append("text").attr("class", "legend-tick").attr("x", 128).attr("y", 14).text(flowMax.toFixed(1));
 
     svg.append("text").attr("x", 495).attr("y", H - 40)
-      .attr("font-size", "10px").attr("fill", "#92400e").attr("text-anchor", "middle").text("↓ İdrar");
+      .attr("font-size", "10px").attr("fill", "#92400e").attr("text-anchor", "middle").text("↓ Urine");
 
     // ============================================================
-    // Renk modu (konsantrasyon ↔ yuk)
+    // Color mode (concentration ↔ load)
     // ============================================================
     let colorMode = "con";
     function applyMode(mode) {
@@ -381,7 +381,7 @@
         svg.select(`path[data-seg='${seg}']`).attr("stroke", has ? `url(#${mode}-grad-${seg})` : "#d1d5db");
       }
       renderColorLegend();
-      d3.select("#mode-btn").text(mode === "load" ? "Renk: Yük (akı)" : "Renk: Konsantrasyon");
+      d3.select("#mode-btn").text(mode === "load" ? "Color: Load (flux)" : "Color: Concentration");
       if (chartOpen) drawChart(highlightOrPinned());
     }
     d3.select("#mode-btn").on("click", () => applyMode(colorMode === "con" ? "load" : "con"));
@@ -389,11 +389,11 @@
     d3.select("#flow-btn").on("click", function () {
       particlesOn = !particlesOn;
       particleG.attr("display", particlesOn ? null : "none");
-      d3.select(this).text(particlesOn ? "Akış: Açık" : "Akış: Kapalı");
+      d3.select(this).text(particlesOn ? "Flow: On" : "Flow: Off");
     });
 
     // ============================================================
-    // GRAFIK PANELI: senkronize profil + tikla-sabitle
+    // CHART PANEL: synchronized profile + click-to-pin
     // ============================================================
     const chartPanel = d3.select("#chart-panel");
     const chartArea = d3.select("#chart-area");
@@ -406,7 +406,7 @@
 
     function activeData() { return colorMode === "load" ? (D.load || {}) : (D.segments || {}); }
     function activeUnit() { return colorMode === "load" ? "pmol/min" : "mM"; }
-    function activeName() { return colorMode === "load" ? `${D.solute} yükü` : `${D.solute}`; }
+    function activeName() { return colorMode === "load" ? `${D.solute} load` : `${D.solute}`; }
     function highlightOrPinned() { return hoverSeg || pinnedSeg; }
 
     const segOrder = ["PT","S3","SDL","LDL","LAL","mTAL","cTAL","DCT","CNT","CCD","OMCD","IMCD"];
@@ -418,9 +418,9 @@
 
     function setHint() {
       if (pinnedSeg) {
-        chartHint.style("display", "block").text(`Sabitlendi: ${pinnedSeg} — kaldırmak için tekrar tıklayın`);
+        chartHint.style("display", "block").text(`Pinned: ${pinnedSeg} — click again to remove`);
       } else {
-        chartHint.style("display", "block").text("Segment üzerine gelin · tıklayınca sabitlenir");
+        chartHint.style("display", "block").text("Hover over a segment · click to pin");
       }
     }
 
@@ -436,7 +436,7 @@
       chartOpen = state;
       chartPanel.classed("open", state);
       diagramPanel.classed("shrunk", state);
-      d3.select("#toggle-chart-btn").text(state ? "Grafiği Kapat" : "Grafiği Aç");
+      d3.select("#toggle-chart-btn").text(state ? "Close chart" : "Open chart");
       if (state) drawChart(highlightOrPinned());
     }
     d3.select("#toggle-chart-btn").on("click", () => openChart(!chartOpen));
@@ -446,7 +446,7 @@
       const data = activeData();
       const segsWithProfile = segOrder.filter(s => data[s] && data[s].profile);
       if (segsWithProfile.length === 0) {
-        chartTitle.text("Veri yok");
+        chartTitle.text("No data");
         return;
       }
 
@@ -524,13 +524,13 @@
         .text(`${activeName()} (${activeUnit()})`);
 
       if (highlightSeg) {
-        chartTitle.text(`${highlightSeg} — ${activeName()} profili`);
+        chartTitle.text(`${highlightSeg} — ${activeName()} profile`);
       } else {
-        chartTitle.text(`Tüm segmentler — ${activeName()}`);
+        chartTitle.text(`All segments — ${activeName()}`);
       }
     }
 
-    // Segment etkilesimleri: hover onizleme + click sabitleme
+    // Segment interactions: hover preview + click pin
     svg.selectAll(".segment-path")
       .on("mouseover.chart", function () {
         hoverSeg = d3.select(this).attr("data-seg");
@@ -549,7 +549,7 @@
       });
 
     // ============================================================
-    // Ilk cizim
+    // Initial draw
     // ============================================================
     applyMode("con");
     setHint();

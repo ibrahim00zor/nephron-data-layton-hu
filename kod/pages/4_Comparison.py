@@ -1,0 +1,137 @@
+"""4_Comparison.py — Multi-scenario overlay.
+Shows several scenarios on one chart and produces a difference table."""
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+from ui_kit import (
+    setup_page, render_sidebar, q, DB, cite_footer, neph_for,
+    options, scenario_list, SCENARIO_LABEL, NEPHRONS, valid_data, segment_broken,
+)
+
+setup_page("Comparison")
+active_scenario = render_sidebar()  # sidebar stays active, but this page spans all scenarios
+
+st.markdown("## Scenario Comparison")
+st.caption("Pick 2–4 scenarios overlaid and see them on one chart. "
+           "This tab reveals **the real power of the 6-scenario library** — "
+           "how mTAL changes in diabetes, which effect SGLT2 reverses, etc.")
+
+all_scenarios = scenario_list()
+
+# Top selectors
+c1, c2, c3 = st.columns(3)
+solute = c1.selectbox("Solute", ["Na", "K", "Cl", "urea", "glu", "HCO3", "NH3", "NH4"], index=0)
+segs, _ = options()
+segment = c2.selectbox("Segment", segs, index=segs.index("mTAL") if "mTAL" in segs else 0)
+compartment = c3.selectbox("Compartment", ["Lumen", "Cell", "Bath"], index=0)
+
+nephron_req = st.selectbox(
+    "Nephron type (auto 'merged' for CD segments)",
+    NEPHRONS,
+    index=NEPHRONS.index("sup"),
+)
+nephron = neph_for(segment, nephron_req)
+
+# Multi-scenario selection
+default = [s for s in ["F_normal", "F_diab_mod", "F_SGLT2"] if s in all_scenarios][:3]
+selected = st.multiselect(
+    "Scenarios to compare (2–4 recommended)",
+    all_scenarios,
+    default=default or all_scenarios[:2],
+    format_func=lambda s: SCENARIO_LABEL.get(s, s),
+)
+
+if len(selected) < 2:
+    st.warning("Pick at least 2 scenarios.")
+    st.stop()
+
+# Fetch data
+placeholders = ",".join(["?"] * len(selected))
+df = q(
+    f"""SELECT condition, position, value FROM {DB}
+        WHERE condition IN ({placeholders})
+              AND variable='con' AND solute=? AND segment=?
+              AND compartment=? AND nephron=?
+        ORDER BY condition, position""",
+    [*selected, solute, segment, compartment, nephron],
+)
+
+# Remove scenarios that did not converge in this segment; then the NaN safety net.
+broken = [s for s in selected if segment_broken(s, segment)]
+if broken:
+    df = df[~df["condition"].isin(broken)]
+    names = ", ".join(SCENARIO_LABEL.get(s, s) for s in broken)
+    st.warning(f"**{names}** **failed to converge** numerically in this segment ({segment}); "
+               f"removed from the comparison. Distal/urine is only reliable in clean scenarios.")
+df, _ = valid_data(df, "con")
+
+if df.empty:
+    st.warning(f"No valid data for the selected combination (e.g. LDL only in jux nephrons, "
+               f"or the selected scenarios did not converge in this segment).")
+    st.stop()
+
+# Color palette — F red tones, M blue tones
+COLOR_MAP = {
+    "F_normal":   "#dc2626",
+    "F_diab_mod": "#ea580c",
+    "F_HT":       "#a16207",
+    "F_SGLT2":    "#be185d",
+    "M_normal":   "#1e40af",
+    "M_SGLT2":    "#0891b2",
+}
+
+fig = px.line(
+    df, x="position", y="value", color="condition",
+    title=f"{segment} — {solute} ({compartment}, {nephron})",
+    labels={"position": "Position (0 = inlet, 1 = outlet)",
+            "value": f"{solute} (mM)", "condition": "Scenario"},
+    color_discrete_map=COLOR_MAP,
+)
+fig.update_layout(hovermode="x unified", height=500,
+                  legend=dict(title_text="Scenario"))
+fig.update_traces(line=dict(width=2.6))
+st.plotly_chart(fig, width='stretch')
+cite_footer()
+
+# ============================================================
+#  Difference table — inlet/outlet per scenario and diff vs reference
+# ============================================================
+st.markdown("### Differences between scenarios")
+
+summary = (df.groupby("condition")
+             .agg(inlet=("value", "first"),
+                  outlet=("value", "last"),
+                  min=("value", "min"),
+                  max=("value", "max"))
+             .round(2))
+summary["change_%"] = ((summary["outlet"] - summary["inlet"]) / summary["inlet"] * 100).round(1)
+
+# Let the user pick the reference scenario
+ref = st.selectbox("Reference scenario (differences are computed against it)",
+                   selected, format_func=lambda s: SCENARIO_LABEL.get(s, s))
+if ref in summary.index:
+    ref_outlet = summary.loc[ref, "outlet"]
+    summary["vs_reference_%"] = ((summary["outlet"] - ref_outlet) / ref_outlet * 100).round(1)
+
+st.dataframe(summary, width='stretch')
+
+# Automatic observation
+if len(summary) >= 2 and "vs_reference_%" in summary.columns:
+    diffs = summary["vs_reference_%"].abs().sort_values(ascending=False)
+    biggest = diffs.index[0] if diffs.iloc[0] > 0 else None
+    if biggest and biggest != ref:
+        ratio = summary.loc[biggest, "vs_reference_%"]
+        st.info(
+            f"**Observation:** with `{ref}` as reference, **`{biggest}`** "
+            f"({SCENARIO_LABEL.get(biggest, biggest)}) shows the largest deviation — "
+            f"**{solute} {ratio:+.1f}%** different at the outlet of segment `{segment}`. "
+            f"This perturbation has a clear effect on this segment."
+        )
+
+# Download CSV
+st.download_button(
+    "Download this comparison data as CSV",
+    df.to_csv(index=False).encode("utf-8"),
+    file_name=f"comparison_{'_vs_'.join(selected)}_{segment}_{solute}.csv",
+    mime="text/csv",
+)

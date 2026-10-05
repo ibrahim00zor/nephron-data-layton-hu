@@ -1,9 +1,9 @@
 """
-ui_kit.py — Paylasilan UI bileSenleri.
+ui_kit.py — Shared UI components.
 
-Anasayfa ve tum pages/ dosyalari bu modulu import eder. Tutarli sidebar, sorgu helper,
-grafik tema, atif footer hep buradan gelir. Pages dosyalari sadece kendi
-mantiklarini icerir — boilerplate burada.
+The home page and every file under pages/ imports this module. The consistent
+sidebar, query helpers, chart theme, and citation footer all come from here.
+Page files hold only their own logic — boilerplate lives here.
 """
 import os
 import duckdb
@@ -13,51 +13,51 @@ import plotly.express as px
 import plotly.io as pio
 
 # ============================================================
-#  Yollar (proje koklerine gore)
+#  Paths (relative to the project root)
 # ============================================================
 PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PARQUET = os.path.join(PROJ, "veri", "nephron_veritabani.parquet")
 DB = f"read_parquet('{PARQUET}')"
 
 # ============================================================
-#  Sabitler
+#  Constants
 # ============================================================
 SEG_ORDER_SUP = ["PT", "S3", "SDL", "mTAL", "cTAL", "DCT", "CNT", "CCD", "OMCD", "IMCD"]
 SEG_ORDER_JUX = ["PT", "S3", "SDL", "LDL", "LAL", "mTAL", "cTAL", "DCT", "CNT", "CCD", "OMCD", "IMCD"]
 NEPHRONS = ["sup", "jux1", "jux2", "jux3", "jux4", "jux5", "merged"]
 CD_SEGMENTS = {"CCD", "OMCD", "IMCD"}
 
-SENARYO_AD = {
-    "F_normal":   "♀ Sağlıklı kadın (baseline)",
-    "M_normal":   "♂ Sağlıklı erkek (baseline)",
-    "F_diab_mod": "♀ + Diyabet (orta)",
-    "F_HT":       "♀ + Hipertansiyon",
-    "F_SGLT2":    "♀ + SGLT2 inhibitörü",
-    "M_SGLT2":    "♂ + SGLT2 inhibitörü",
+SCENARIO_LABEL = {
+    "F_normal":   "♀ Healthy female (baseline)",
+    "M_normal":   "♂ Healthy male (baseline)",
+    "F_diab_mod": "♀ + Diabetes (moderate)",
+    "F_HT":       "♀ + Hypertension",
+    "F_SGLT2":    "♀ + SGLT2 inhibitor",
+    "M_SGLT2":    "♂ + SGLT2 inhibitor",
 }
-SENARYO_DETAY = {
-    "F_normal":   "Sağlıklı yetişkin kadın, normal hidrasyon. **Tüm karşılaştırmaların referansı.**",
-    "M_normal":   "Sağlıklı yetişkin erkek. Cinsiyet farkı analizleri için referans.",
-    "F_diab_mod": "Orta dereceli diyabet. PT'de glukoz yükü artar.",
-    "F_HT":       "Hipertansiyon. Tubuler basınç ve renal kan akımı baseline'dan sapar.",
-    "F_SGLT2":    "Gliflozin. PT'de glukoz reabsorpsiyonu bloke; natriürez beklenir.",
-    "M_SGLT2":    "Gliflozin, erkek. F_SGLT2 ile cinsiyet × ilaç karşılaştırması.",
+SCENARIO_DETAIL = {
+    "F_normal":   "Healthy adult female, normal hydration. **Reference for all comparisons.**",
+    "M_normal":   "Healthy adult male. Reference for sex-difference analyses.",
+    "F_diab_mod": "Moderate diabetes. Glucose load rises in the PT.",
+    "F_HT":       "Hypertension. Tubular pressure and renal blood flow deviate from baseline.",
+    "F_SGLT2":    "Gliflozin. PT glucose reabsorption blocked; natriuresis expected.",
+    "M_SGLT2":    "Gliflozin, male. Sex × drug comparison against F_SGLT2.",
 }
 
 # ============================================================
-#  Sayfa kurulumu (her sayfa cagirir)
+#  Page setup (called by every page)
 # ============================================================
 def setup_page(page_title, page_icon="◐"):
     st.set_page_config(
-        page_title=f"{page_title} · Nefron Veri Gezgini",
+        page_title=f"{page_title} · Nephron Data (Layton/Hu)",
         page_icon=page_icon,
         layout="wide",
         initial_sidebar_state="expanded",
     )
-    # Plotly tema
-    if "nefron" not in pio.templates:
-        pio.templates["nefron"] = pio.templates["simple_white"]
-        pio.templates["nefron"].layout.update(
+    # Plotly theme
+    if "nephron" not in pio.templates:
+        pio.templates["nephron"] = pio.templates["simple_white"]
+        pio.templates["nephron"].layout.update(
             font=dict(family="Inter, system-ui, -apple-system, sans-serif", size=13, color="#1f2937"),
             title=dict(font=dict(size=15, color="#111827")),
             colorway=["#2563eb", "#dc2626", "#059669", "#d97706", "#7c3aed", "#0891b2", "#be185d"],
@@ -66,7 +66,7 @@ def setup_page(page_title, page_icon="◐"):
             xaxis=dict(gridcolor="#f3f4f6", zerolinecolor="#e5e7eb"),
             yaxis=dict(gridcolor="#f3f4f6", zerolinecolor="#e5e7eb"),
         )
-    pio.templates.default = "nefron"
+    pio.templates.default = "nephron"
     # Global CSS
     st.markdown("""
     <style>
@@ -81,54 +81,54 @@ def setup_page(page_title, page_icon="◐"):
     """, unsafe_allow_html=True)
 
 # ============================================================
-#  Sorgu helper (cache'li)
+#  Query helpers (cached)
 # ============================================================
 @st.cache_data
 def q(sql, params=None):
     return duckdb.connect().execute(sql, params or []).df()
 
-def scalar(sql, senaryo, params=None):
-    """condition filtresini otomatik ekler, tek deger dondurur."""
+def scalar(sql, scenario, params=None):
+    """Adds the condition filter automatically and returns a single value."""
     if "condition=" not in sql:
-        sql = sql.replace("WHERE ", f"WHERE condition='{senaryo}' AND ", 1)
+        sql = sql.replace("WHERE ", f"WHERE condition='{scenario}' AND ", 1)
     r = q(sql, params or [])
     return None if r.empty else float(r["value"].iloc[0])
 
 # ============================================================
-#  Yardimcilar
+#  Helpers
 # ============================================================
 def neph_for(segment, requested):
     return "merged" if segment in CD_SEGMENTS else requested
 
 @st.cache_data
-def secenekler():
+def options():
     seg = q(f"SELECT DISTINCT segment FROM {DB}")["segment"].tolist()
     sol = q(f"SELECT DISTINCT solute FROM {DB} WHERE solute IS NOT NULL")["solute"].tolist()
     return sorted(seg), sorted(sol)
 
 @st.cache_data
-def saglik_metrikleri():
+def health_metrics():
     return q(f"""
-        SELECT COUNT(*) AS satir, COUNT(DISTINCT segment) AS segment,
-               (SELECT COUNT(DISTINCT solute) FROM {DB} WHERE solute IS NOT NULL) AS solut,
-               COUNT(DISTINCT variable) AS degisken,
-               COUNT(DISTINCT nephron) AS nefron,
-               COUNT(DISTINCT condition) AS senaryo_sayisi
+        SELECT COUNT(*) AS rows, COUNT(DISTINCT segment) AS segments,
+               (SELECT COUNT(DISTINCT solute) FROM {DB} WHERE solute IS NOT NULL) AS solutes,
+               COUNT(DISTINCT variable) AS variables,
+               COUNT(DISTINCT nephron) AS nephrons,
+               COUNT(DISTINCT condition) AS scenario_count
         FROM {DB}
     """).iloc[0]
 
 @st.cache_data
-def senaryo_listesi():
+def scenario_list():
     return q(f"SELECT DISTINCT condition FROM {DB} ORDER BY condition")["condition"].tolist()
 
-# Fiziksel olarak negatif olamayan degiskenler (yakinsama hatasi tespiti icin)
+# Variables that cannot be physically negative (used to detect convergence failures)
 NONNEG_VARS = {"con", "osmolality", "water_volume"}
 
 @st.cache_data
-def butunluk_haritasi():
-    """Hangi (senaryo -> segment kumesi) sayisal olarak yakinsamadi?
-    Gosterge: NaN deger veya negatif Lumen osmolalitesi (solut toplami negatif olamaz).
-    Modelin Newton cozucusu bazi senaryolarda toplayici kanalda coker (bkz. bulgular.md #0)."""
+def integrity_map():
+    """Which (scenario -> set of segments) failed to converge numerically?
+    Signal: a NaN value or a negative Lumen osmolality (a solute total cannot be negative).
+    The model's Newton solver breaks down in the collecting duct for some scenarios."""
     df = q(f"""
         SELECT condition, segment,
             SUM(CASE WHEN value IS NULL OR isnan(value) THEN 1 ELSE 0 END) AS nan,
@@ -136,95 +136,95 @@ def butunluk_haritasi():
                      THEN 1 ELSE 0 END) AS neg_osm
         FROM {DB} GROUP BY condition, segment
     """)
-    bozuk = {}
+    broken = {}
     for _, r in df.iterrows():
         if r["nan"] > 0 or r["neg_osm"] > 0:
-            bozuk.setdefault(r["condition"], set()).add(r["segment"])
-    return bozuk
+            broken.setdefault(r["condition"], set()).add(r["segment"])
+    return broken
 
-def gecerli_veri(df, variable, value_col="value"):
-    """Fiziksel olarak imkansiz satirlari (NaN; non-neg degiskenlerde negatif) ayiklar.
-    Yakinsamayan senaryolarda cop egrilerin cizilmesini onler (evrensel emniyet agi).
-    Dondurur: (temiz_df, atilan_satir_sayisi)."""
+def valid_data(df, variable, value_col="value"):
+    """Filters out physically impossible rows (NaN; negatives in non-negative variables).
+    Prevents garbage curves from being drawn for non-converged scenarios (universal safety net).
+    Returns: (clean_df, number_of_dropped_rows)."""
     n0 = len(df)
     mask = df[value_col].notna()
     if variable in NONNEG_VARS:
         mask = mask & (df[value_col] >= -1e-9)
-    temiz = df[mask]
-    return temiz, n0 - len(temiz)
+    clean = df[mask]
+    return clean, n0 - len(clean)
 
-def segment_bozuk_mu(senaryo, segment):
-    """Bu (senaryo, segment) sayisal olarak yakinsamadi mi? True ise tum segment gizlenir
-    (kesik/yaniltici egri birakmamak icin). Cozum sonlara dogru cokse bile guvenmeyiz."""
-    return segment in butunluk_haritasi().get(senaryo, set())
+def segment_broken(scenario, segment):
+    """Did this (scenario, segment) fail to converge? If True the whole segment is hidden
+    (so no truncated/misleading curve is left). We distrust it even if it breaks only late."""
+    return segment in integrity_map().get(scenario, set())
 
 # ============================================================
-#  Sidebar (her sayfa cagirir)
+#  Sidebar (called by every page)
 # ============================================================
 def render_sidebar():
-    senaryolar = senaryo_listesi()
+    scenarios = scenario_list()
     with st.sidebar:
-        st.markdown("### Nefron Veri Gezgini")
-        st.caption("Layton/Hu modeli — interaktif veri arayüzü")
+        st.markdown("### Nephron Data (Layton/Hu)")
+        st.caption("Layton/Hu model — interactive data explorer")
 
-        senaryo = st.selectbox(
-            "Aktif senaryo",
-            senaryolar,
-            format_func=lambda s: SENARYO_AD.get(s, s),
-            index=senaryolar.index("F_normal") if "F_normal" in senaryolar else 0,
-            key="senaryo_secimi_sidebar",
-            help="Bu sayfanın grafikleri/sorguları seçilen senaryoya göre filtrelenir.",
+        scenario = st.selectbox(
+            "Active scenario",
+            scenarios,
+            format_func=lambda s: SCENARIO_LABEL.get(s, s),
+            index=scenarios.index("F_normal") if "F_normal" in scenarios else 0,
+            key="scenario_select_sidebar",
+            help="This page's charts/queries are filtered by the selected scenario.",
         )
-        detay = SENARYO_DETAY.get(senaryo, "")
-        if detay:
+        detail = SCENARIO_DETAIL.get(scenario, "")
+        if detail:
             st.markdown(
                 f"<div style='background:#eff6ff;border:1px solid #bfdbfe;padding:8px 12px;"
-                f"border-radius:6px;font-size:0.82rem;color:#1e3a8a;'>{detay}</div>",
+                f"border-radius:6px;font-size:0.82rem;color:#1e3a8a;'>{detail}</div>",
                 unsafe_allow_html=True,
             )
-        st.caption(f"Kod: `{senaryo}` · {len(senaryolar)} senaryolu kütüphane")
+        st.caption(f"Code: `{scenario}` · {len(scenarios)}-scenario library")
 
-        bozuk = butunluk_haritasi()
-        if senaryo in bozuk:
-            segs = ", ".join(sorted(bozuk[senaryo]))
+        broken = integrity_map()
+        if scenario in broken:
+            segs = ", ".join(sorted(broken[scenario]))
             st.warning(
-                f"**Veri uyarısı:** Bu senaryonun **{segs}** segment(ler)i sayısal olarak "
-                f"yakınsamadı (toplayıcı kanal). Bu segmentlerin verisi geçersizdir ve "
-                f"grafiklerde gizlenir. Proksimal–DCT arası güvenilir. Detay: Veri Bütünlüğü."
+                f"**Data warning:** segment(s) **{segs}** of this scenario failed to "
+                f"converge numerically (collecting duct). Their data is invalid and is "
+                f"hidden in the charts. Proximal–DCT is reliable. Details: Data Integrity."
             )
 
         st.markdown("---")
-        sb = saglik_metrikleri()
+        sb = health_metrics()
         c1, c2 = st.columns(2)
-        c1.metric("Bu senaryo", f"{sb['satir'] // max(sb['senaryo_sayisi'],1):,} satır")
-        c2.metric("Kütüphane", f"{sb['senaryo_sayisi']} senaryo")
+        c1.metric("This scenario", f"{sb['rows'] // max(sb['scenario_count'],1):,} rows")
+        c2.metric("Library", f"{sb['scenario_count']} scenarios")
         st.caption(
-            f"Model yapısı: **{sb['segment']}** segment · **{sb['solut']}** solüt · "
-            f"**{sb['nefron']}** nefron · **{sb['degisken']}** değişken"
+            f"Model structure: **{sb['segments']}** segments · **{sb['solutes']}** solutes · "
+            f"**{sb['nephrons']}** nephrons · **{sb['variables']}** variables"
         )
 
         st.markdown("---")
-        with st.expander("Veri kaynağı & atıf"):
+        with st.expander("Data source & citation"):
             st.markdown(
                 "**Model:** Layton/Hu (`mstadt/nephron`)\n\n"
-                "**Atıf:** Hu R., et al. (2021). *Sex differences in solute and water "
+                "**Citation:** Hu R., et al. (2021). *Sex differences in solute and water "
                 "handling in the human kidney.* iScience 24(6):102694. "
                 "[doi:10.1016/j.isci.2021.102694](https://doi.org/10.1016/j.isci.2021.102694)\n\n"
-                "**Bu proje:** Zor, İ. (2026). *Nefron Veri Gezgini.* Zenodo. "
+                "**This project:** Zor, İ. (2026). *Nephron Data (Layton/Hu).* Zenodo. "
                 "[doi:10.5281/zenodo.20489610](https://doi.org/10.5281/zenodo.20489610)"
             )
-        with st.expander("Birimler"):
+        with st.expander("Units"):
             st.markdown(
-                "Konsantrasyon: **mM** · Akı: **pmol/min** · Hacim: **nl/min** · "
-                "Ozmolalite: **mOsm** · Potansiyel: **mV**"
+                "Concentration: **mM** · Flux: **pmol/min** · Volume: **nl/min** · "
+                "Osmolality: **mOsm** · Potential: **mV**"
             )
-    return senaryo
+    return scenario
 
 # ============================================================
-#  Grafik helper
+#  Chart helper
 # ============================================================
-def chart_yap(df, x, y, color, title, xlab, ylab, color_label="Seri",
-              category_orders=None, height=460, color_map=None):
+def make_chart(df, x, y, color, title, xlab, ylab, color_label="Series",
+               category_orders=None, height=460, color_map=None):
     if color_map:
         fig = px.line(df, x=x, y=y, color=color, title=title,
                       labels={x: xlab, y: ylab, color: color_label},
@@ -240,130 +240,131 @@ def chart_yap(df, x, y, color, title, xlab, ylab, color_label="Seri",
     return fig
 
 # ============================================================
-#  Atif footer (her grafiğin altina)
+#  Citation footer (under every chart)
 # ============================================================
 def cite_footer():
     st.markdown(
         "<div class='cite-footer'>"
-        "<b>Kaynak:</b> Hu et al. 2021, <i>iScience</i> 24:102694 &nbsp;·&nbsp; "
-        "<b>Bu araç:</b> Zor 2026, "
+        "<b>Source:</b> Hu et al. 2021, <i>iScience</i> 24:102694 &nbsp;·&nbsp; "
+        "<b>This tool:</b> Zor 2026, "
         "<a href='https://doi.org/10.5281/zenodo.20489610' target='_blank' "
         "style='color:#1e40af;text-decoration:none;'>doi:10.5281/zenodo.20489610</a> &nbsp;·&nbsp; "
-        "<b>Birimler:</b> konsantrasyon mM, hacim nl/min, ozmolalite mOsm"
+        "<b>Units:</b> concentration mM, volume nl/min, osmolality mOsm"
         "</div>",
         unsafe_allow_html=True,
     )
 
 # ============================================================
-#  Kaynak / atif sistemi (akademik referans kartlari)
+#  Reference / citation system (academic reference cards)
 # ============================================================
-# KURAL: Buraya YALNIZ gercek, kunyesi/DOI'si dogrulanmis kaynaklar girer
-# (CITATION.cff ile tutarli). Uydurma atif/DOI/baslik KESINLIKLE yok.
-# Birincil klinik literatur (RCT, KDIGO vb.) ancak cift-dogrulama sonrasi eklenir.
-# NOT: Türkmen 2024 (ders kitabi) kasten burada DEGIL — ona atif kullanicinin kendi
-# notlarinda, kendi cumleleriyle yapilir (kitaba erisim yalniz onda).
-KAYNAKLAR = {
+# RULE: only real references with a verified citation/DOI go here
+# (consistent with CITATION.cff). No fabricated citation/DOI/title, ever.
+# Primary clinical literature (RCTs, KDIGO, etc.) is added only after double-verification.
+# NOTE: Türkmen 2024 (textbook) is intentionally NOT here — that reference is made by the
+# author in their own notes, in their own words (only they have access to the book).
+REFERENCES = {
     "hu2021": {
-        "tip": "Makale",
-        "yazarlar": "Hu R., Layton A.T.",
-        "yil": 2021,
-        "baslik": "Sex differences in solute and water handling in the human kidney: "
-                  "Modeling and functional implications",
-        "kaynak": "iScience 24(6):102694",
+        "type": "Article",
+        "authors": "Hu R., Layton A.T.",
+        "year": 2021,
+        "title": "Sex differences in solute and water handling in the human kidney: "
+                 "Modeling and functional implications",
+        "source": "iScience 24(6):102694",
         "doi": "10.1016/j.isci.2021.102694",
-        "not": "Bu uygulamadaki tüm verinin türetildiği matematik model (birincil kaynak).",
+        "note": "The mathematical model from which all data in this app is derived (primary source).",
     },
     "model_stadt": {
-        "tip": "Yazılım",
-        "yazarlar": "Stadt M., Layton A.T.",
-        "yil": None,
-        "baslik": "nephron — matematik model uygulaması",
-        "kaynak": "github.com/mstadt/nephron",
+        "type": "Software",
+        "authors": "Stadt M., Layton A.T.",
+        "year": None,
+        "title": "nephron — mathematical model implementation",
+        "source": "github.com/mstadt/nephron",
         "url": "https://github.com/mstadt/nephron",
-        "not": "Senaryoların üretildiği açık kaynak model kodu.",
+        "note": "The open-source model code the scenarios were generated with.",
     },
-    # --- Klinik literatur (PubMed; kullanici 2026-06'da dogruladi) ---
+    # --- Clinical literature (PubMed; verified by the author in 2026-06) ---
     "vallon2022": {
-        "tip": "Makale",
-        "yazarlar": "Vallon V.",
-        "yil": 2022,
-        "baslik": "Renoprotective Effects of SGLT2 Inhibitors",
-        "kaynak": "Heart Failure Clinics 18(4):539-549",
+        "type": "Article",
+        "authors": "Vallon V.",
+        "year": 2022,
+        "title": "Renoprotective Effects of SGLT2 Inhibitors",
+        "source": "Heart Failure Clinics 18(4):539-549",
         "doi": "10.1016/j.hfc.2022.03.005",
-        "not": "SGLT2i'nin TGF restorasyonu ve nefroprotektif mekanizmasının mekanistik incelemesi.",
+        "note": "Mechanistic review of TGF restoration and the renoprotective mechanism of SGLT2i.",
     },
     "upadhyay2024": {
-        "tip": "Makale",
-        "yazarlar": "Upadhyay A.",
-        "yil": 2024,
-        "baslik": "SGLT2 Inhibitors and Kidney Protection: Mechanisms Beyond Tubuloglomerular Feedback",
-        "kaynak": "Kidney360 5(5):771-782",
+        "type": "Article",
+        "authors": "Upadhyay A.",
+        "year": 2024,
+        "title": "SGLT2 Inhibitors and Kidney Protection: Mechanisms Beyond Tubuloglomerular Feedback",
+        "source": "Kidney360 5(5):771-782",
         "doi": "10.34067/KID.0000000000000425",
-        "not": "TGF ve ötesi nefroprotektif mekanizmalar (güncel inceleme).",
+        "note": "Renoprotective mechanisms of TGF and beyond (recent review).",
     },
     "empakidney2023": {
-        "tip": "RCT",
-        "yazarlar": "EMPA-KIDNEY Collaborative Group (Herrington WG, Staplin N, ve ark.)",
-        "yil": 2023,
-        "baslik": "Empagliflozin in Patients with Chronic Kidney Disease",
-        "kaynak": "N Engl J Med 388(2):117-127 (online 2022)",
+        "type": "RCT",
+        "authors": "EMPA-KIDNEY Collaborative Group (Herrington WG, Staplin N, et al.)",
+        "year": 2023,
+        "title": "Empagliflozin in Patients with Chronic Kidney Disease",
+        "source": "N Engl J Med 388(2):117-127 (online 2022)",
         "doi": "10.1056/NEJMoa2204233",
-        "not": "Landmark randomize çalışma: empagliflozinin renal sonuçlara klinik etkisi.",
+        "note": "Landmark randomized trial: clinical effect of empagliflozin on renal outcomes.",
     },
     "vallon_thomson2020": {
-        "tip": "Makale",
-        "yazarlar": "Vallon V., Thomson S.C.",
-        "yil": 2020,
-        "baslik": "The tubular hypothesis of nephron filtration and diabetic kidney disease",
-        "kaynak": "Nature Reviews Nephrology 16(6):317-336",
+        "type": "Article",
+        "authors": "Vallon V., Thomson S.C.",
+        "year": 2020,
+        "title": "The tubular hypothesis of nephron filtration and diabetic kidney disease",
+        "source": "Nature Reviews Nephrology 16(6):317-336",
         "doi": "10.1038/s41581-020-0256-y",
-        "not": "Diyabetik hiperfiltrasyonun tübüler hipotezinin referans incelemesi.",
+        "note": "Reference review of the tubular hypothesis of diabetic hyperfiltration.",
     },
     "ivy_bailey2014": {
-        "tip": "Makale",
-        "yazarlar": "Ivy J.R., Bailey M.A.",
-        "yil": 2014,
-        "baslik": "Pressure natriuresis and the renal control of arterial blood pressure",
-        "kaynak": "The Journal of Physiology 592(18):3955-3967",
+        "type": "Article",
+        "authors": "Ivy J.R., Bailey M.A.",
+        "year": 2014,
+        "title": "Pressure natriuresis and the renal control of arterial blood pressure",
+        "source": "The Journal of Physiology 592(18):3955-3967",
         "doi": "10.1113/jphysiol.2014.271676",
-        "not": "Basınç natriürezi ve renal kan basıncı kontrolünün yetkili incelemesi.",
+        "note": "Authoritative review of pressure natriuresis and renal blood-pressure control.",
     },
     "kdigo2022diabetes": {
-        "tip": "Kılavuz",
-        "yazarlar": "KDIGO Diabetes Work Group",
-        "yil": 2022,
-        "baslik": "KDIGO 2022 Clinical Practice Guideline for Diabetes Management in Chronic Kidney Disease",
-        "kaynak": "Kidney International 102(5S):S1-S127",
+        "type": "Guideline",
+        "authors": "KDIGO Diabetes Work Group",
+        "year": 2022,
+        "title": "KDIGO 2022 Clinical Practice Guideline for Diabetes Management in Chronic Kidney Disease",
+        "source": "Kidney International 102(5S):S1-S127",
         "doi": "10.1016/j.kint.2022.06.008",
-        "not": "Diyabet + KBH'de SGLT2i, RAS blokajı ve glisemik yönetim için klinik kılavuz.",
+        "note": "Clinical guideline for SGLT2i, RAS blockade, and glycemic management in diabetes + CKD.",
     },
-    # --- Faz 27: Vaka 2-3 doz kaynakları ---
+    # --- Phase 27: dose sources for cases 2-3 ---
     "kdigo2021bp": {
-        "tip": "Kılavuz",
-        "yazarlar": "KDIGO Blood Pressure Work Group (Cheung AK, Chang TI, ve ark.)",
-        "yil": 2021,
-        "baslik": "KDIGO 2021 Clinical Practice Guideline for the Management of Blood Pressure "
-                  "in Chronic Kidney Disease",
-        "kaynak": "Kidney International 99(3S):S1-S87",
+        "type": "Guideline",
+        "authors": "KDIGO Blood Pressure Work Group (Cheung AK, Chang TI, et al.)",
+        "year": 2021,
+        "title": "KDIGO 2021 Clinical Practice Guideline for the Management of Blood Pressure "
+                 "in Chronic Kidney Disease",
+        "source": "Kidney International 99(3S):S1-S87",
         "doi": "10.1016/j.kint.2020.11.003",
-        "not": "KBH'de kan basıncı yönetimi: hedef <120 mmHg sistolik, ACEi/ARB albüminüride "
-              "birinci basamak, tolere edilen en yüksek onaylı doza titre edilmeli.",
+        "note": "Blood-pressure management in CKD: target <120 mmHg systolic, ACEi/ARB first-line "
+                "in albuminuria, titrated to the highest tolerated approved dose.",
     },
     "agarwal2021click": {
-        "tip": "RCT",
-        "yazarlar": "Agarwal R., Sinha A.D., Cramer A.E., ve ark.",
-        "yil": 2021,
-        "baslik": "Chlorthalidone for Hypertension in Advanced Chronic Kidney Disease",
-        "kaynak": "N Engl J Med 385(27):2507-2519",
+        "type": "RCT",
+        "authors": "Agarwal R., Sinha A.D., Cramer A.E., et al.",
+        "year": 2021,
+        "title": "Chlorthalidone for Hypertension in Advanced Chronic Kidney Disease",
+        "source": "N Engl J Med 385(27):2507-2519",
         "doi": "10.1056/NEJMoa2110730",
-        "not": "CLICK çalışması: klortalidone ileri KBH'de (eGFR <30) etkili kan basıncı düşüşü sağladı.",
+        "note": "The CLICK trial: chlorthalidone achieved effective blood-pressure lowering in "
+                "advanced CKD (eGFR <30).",
     },
 }
 
-def kaynak_karti(ref):
-    """Tek bir referansi akademik bir bilgi kutusu olarak render eder."""
-    yil = f" ({ref['yil']})" if ref.get("yil") else ""
-    alt_satir = [s for s in (ref.get("kaynak"), (f"ISBN {ref['isbn']}" if ref.get("isbn") else None)) if s]
+def reference_card(ref):
+    """Renders a single reference as an academic info box."""
+    year = f" ({ref['year']})" if ref.get("year") else ""
+    subline = [s for s in (ref.get("source"), (f"ISBN {ref['isbn']}" if ref.get("isbn") else None)) if s]
     if ref.get("doi"):
         link = (f"<a href='https://doi.org/{ref['doi']}' target='_blank' "
                 f"style='color:#1e40af;text-decoration:none;'>doi:{ref['doi']}</a>")
@@ -376,23 +377,23 @@ def kaynak_karti(ref):
         "<div style='border:1px solid #e5e7eb;border-left:3px solid #1e3a8a;"
         "background:#f8fafc;border-radius:6px;padding:10px 14px;margin:6px 0;font-size:0.84rem;'>"
         "<span style='display:inline-block;background:#1e3a8a;color:white;font-size:0.66rem;"
-        f"padding:1px 8px;border-radius:10px;letter-spacing:0.03em;'>{ref.get('tip','Kaynak')}</span> "
-        f"<b style='color:#111827;'>{ref.get('yazarlar','')}{yil}.</b> {ref.get('baslik','')}. "
-        f"<i style='color:#4b5563;'>{' · '.join(alt_satir)}</i>"
+        f"padding:1px 8px;border-radius:10px;letter-spacing:0.03em;'>{ref.get('type','Reference')}</span> "
+        f"<b style='color:#111827;'>{ref.get('authors','')}{year}.</b> {ref.get('title','')}. "
+        f"<i style='color:#4b5563;'>{' · '.join(subline)}</i>"
         + (f"<br>{link}" if link else "")
-        + (f"<div style='color:#6b7280;font-size:0.78rem;margin-top:4px;'>{ref['not']}</div>"
-           if ref.get("not") else "")
+        + (f"<div style='color:#6b7280;font-size:0.78rem;margin-top:4px;'>{ref['note']}</div>"
+           if ref.get("note") else "")
         + "</div>",
         unsafe_allow_html=True,
     )
 
-def kaynaklar_kutusu(anahtarlar, baslik="Kaynaklar", ek_not=None, acik=False):
-    """Verilen kaynak anahtarlari icin akademik 'Kaynaklar' bolumu (expander).
-    Tanimsiz anahtari sessizce atlar — asla uydurma kart cizmez."""
-    with st.expander(baslik, expanded=acik):
-        for k in anahtarlar:
-            ref = KAYNAKLAR.get(k)
+def references_box(keys, title="References", extra_note=None, open=False):
+    """Academic 'References' section (expander) for the given reference keys.
+    Silently skips an undefined key — never draws a fabricated card."""
+    with st.expander(title, expanded=open):
+        for k in keys:
+            ref = REFERENCES.get(k)
             if ref:
-                kaynak_karti(ref)
-        if ek_not:
-            st.caption(ek_not)
+                reference_card(ref)
+        if extra_note:
+            st.caption(extra_note)

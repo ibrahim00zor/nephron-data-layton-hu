@@ -1,22 +1,22 @@
 """
-build_database.py  —  Nefron-Projesi veri yukleyicisi (coklu senaryo).
-veri/ham_scenarios/<senaryo>/*.txt -> tek tidy Parquet (condition kolonu ile).
-Tasarim: 'classify-then-route' -> dosya turunu belirle, sonra dogru kuralla coz.
+build_database.py  —  data loader for this project (multi-scenario).
+veri/ham_scenarios/<scenario>/*.txt -> a single tidy Parquet (with a condition column).
+Design: 'classify-then-route' -> determine the file type, then parse with the right rule.
 
-Calistirmak icin:  python3 kod/build_database.py
+Run with:  python3 kod/build_database.py
 """
 import glob
 import os
 import pandas as pd
 import numpy as np
 
-# --- Yollar ---
+# --- Paths ---
 KOD_DIR    = os.path.dirname(os.path.abspath(__file__))
 PROJ_ROOT  = os.path.dirname(KOD_DIR)
 SCENARIOS_ROOT = os.path.join(PROJ_ROOT, "veri", "ham_scenarios")
 OUTPUT     = os.path.join(PROJ_ROOT, "veri", "nephron_veritabani.parquet")
 
-# Bilinen sabitler (modelin output.py / driver.py ile birebir ayni)
+# Known constants (identical to the model's output.py / driver.py)
 SOLUTES = ['Na','K','Cl','HCO3','H2CO3','CO2','HPO4','H2PO4','urea','NH3','NH4','H','HCO2','H2CO2','glu']
 SOLUTES_BY_LEN = sorted(SOLUTES, key=len, reverse=True)
 NEPHS = {'sup','jux1','jux2','jux3','jux4','jux5'}
@@ -27,22 +27,22 @@ UNITS = {'con':'mM', 'flow':'pmol/min', 'water_volume':'nl/min', 'flux':'pmol/mi
          'osmolality':'mOsm', 'pH':'', 'potential':'mV',
          'pressure':'unknown', 'diameter':'unknown', 'length':'unknown'}
 
-# Segment grid (dilim) boyutlari — modelden sabit. Geri kalan hepsi 200.
+# Segment grid (number of points) sizes — fixed by the model. Everything else is 200.
 SEGMENT_GRID = {'PT': 181, 'S3': 20}
 DEFAULT_GRID = 200
 
-# --- Cok-membranli flux dosyalari (Gorev #4) ---
-# Bazi tasiyicilar (AE1, HATPase, HKATPase, NHE1) bir segmentte birden cok hucre
-# membranina aittir; model bunlarin akisini TEK dosyaya, dosya adinda membran
-# kimligi OLMADAN, append modunda yazar. Sonuc: N*grid satirlik dosya, ve veri
-# pozisyon-bazli DEGIL, membran-bazli IC ICE GECMIS (interleaved):
-#     [poz0_m0, poz0_m1, poz0_m2, poz1_m0, poz1_m1, poz1_m2, ...]
-# Yani membran m'nin profili = values[m::membran_sayisi] (stride ile ayristirilir).
-# Membran sirasi modelin parametre dosyalarindaki (datafiles/<SEG>params_*_hum.dat)
-# transport_ satir sirasidir; asagidaki tablo o siradan, sex-filtreli, dosya
-# uzunluklariyla dogrulanarak cikarilmistir. Etiket = kompartman cifti.
-#   Kompartmanlar: Cell=principal, ICA=A-tipi ara hucre, ICB=B-tipi ara hucre,
-#   LIS=lateral hucrelerarasi bosluk, Bath=interstisyum, Lumen=tubul lumeni.
+# --- Multi-membrane flux files ---
+# Some transporters (AE1, HATPase, HKATPase, NHE1) belong to more than one cell membrane
+# in a segment; the model writes their fluxes into a SINGLE file, WITHOUT a membrane id in
+# the file name, in append mode. Result: an N*grid-row file where the data is NOT
+# position-based but membrane-based INTERLEAVED:
+#     [pos0_m0, pos0_m1, pos0_m2, pos1_m0, pos1_m1, pos1_m2, ...]
+# So membrane m's profile = values[m::num_membranes] (separated by stride).
+# The membrane order is the transport_ line order in the model's parameter files
+# (datafiles/<SEG>params_*_hum.dat); the table below was extracted from that order,
+# sex-filtered, and validated against file lengths. Label = the compartment pair.
+#   Compartments: Cell=principal, ICA=type-A intercalated cell, ICB=type-B intercalated cell,
+#   LIS=lateral intercellular space, Bath=interstitium, Lumen=tubule lumen.
 MEMBRANE_ORDER = {
     ('CNT',  'HATPase'):  ['Lumen-ICA', 'ICB-LIS', 'ICB-Bath'],
     ('CNT',  'HKATPase'): ['Lumen-Cell', 'Lumen-ICA', 'Lumen-ICB'],
@@ -65,7 +65,7 @@ def split_solute_membid(token):
 
 
 def parse_filename(stem):
-    """Dosya adini (uzantisiz) -> kayit sozlugu. Taninmazsa None."""
+    """File name (without extension) -> record dict. None if unrecognized."""
     parts = stem.split('_')
     if len(parts) < 4:
         return None
@@ -108,7 +108,7 @@ def parse_filename(stem):
 
 
 def make_frame(rec, condition, profile, membrane):
-    """Tek bir (membran) profilini tidy DataFrame parcasina cevirir."""
+    """Turns a single (membrane) profile into a tidy DataFrame piece."""
     n = len(profile)
     return pd.DataFrame({
         "sex": rec['sex'], "species": rec['species'], "condition": condition,
@@ -123,8 +123,8 @@ def make_frame(rec, condition, profile, membrane):
 
 
 def load_scenario(scenario_dir, condition):
-    """Tek bir senaryo klasoru yukler, condition kolonu ekler.
-    Cok-membranli flux dosyalarini membran basina ayristirir (bkz. MEMBRANE_ORDER)."""
+    """Loads a single scenario folder and adds the condition column.
+    Splits multi-membrane flux files per membrane (see MEMBRANE_ORDER)."""
     files = sorted(glob.glob(os.path.join(scenario_dir, "*.txt")))
     if not files:
         return pd.DataFrame(), [], []
@@ -138,17 +138,17 @@ def load_scenario(scenario_dir, condition):
         n = len(values)
         grid = SEGMENT_GRID.get(rec['segment'], DEFAULT_GRID)
 
-        # Cok-membranli flux dosyasi mi? (uzunluk grid'in tam kati ve > grid)
+        # Is it a multi-membrane flux file? (length an exact multiple of grid and > grid)
         if rec['variable'] == 'flux' and n > grid and n % grid == 0:
             k = n // grid
             labels = MEMBRANE_ORDER.get((rec['segment'], rec['transporter']))
             if labels is None or len(labels) != k:
-                # Eslestirme tablosunda yok -> yine de DOGRU ayristir (stride),
-                # ama anatomik etiket veremiyoruz; indeksle etiketle ve isaretle.
+                # Not in the mapping table -> still split CORRECTLY (stride),
+                # but we can't give an anatomic label; label by index and flag it.
                 labels = [f"m{m}" for m in range(k)]
                 suspicious.append((stem, n, k))
             for m in range(k):
-                # interleaved: membran m = her k'inci deger
+                # interleaved: membrane m = every k-th value
                 frames.append(make_frame(rec, condition, values[m::k], labels[m]))
         else:
             frames.append(make_frame(rec, condition, values, None))
@@ -156,44 +156,44 @@ def load_scenario(scenario_dir, condition):
 
 
 def load_all():
-    """ham_scenarios/ altindaki tum alt-klasorleri yukler."""
+    """Loads every subfolder under ham_scenarios/."""
     if not os.path.isdir(SCENARIOS_ROOT):
-        raise FileNotFoundError(f"Senaryo kokukune yok: {SCENARIOS_ROOT}")
+        raise FileNotFoundError(f"Scenario root not found: {SCENARIOS_ROOT}")
     scenarios = sorted([d for d in os.listdir(SCENARIOS_ROOT)
                         if os.path.isdir(os.path.join(SCENARIOS_ROOT, d))])
-    print(f"{len(scenarios)} senaryo bulundu: {scenarios}")
+    print(f"{len(scenarios)} scenarios found: {scenarios}")
 
     all_frames, all_unknown, all_suspicious = [], [], []
     for scn in scenarios:
         path = os.path.join(SCENARIOS_ROOT, scn)
-        print(f"  yukleniyor: {scn}", end=" ... ", flush=True)
+        print(f"  loading: {scn}", end=" ... ", flush=True)
         df, unk, susp = load_scenario(path, scn)
         if df.empty:
-            print("BOS (atlandi)")
+            print("EMPTY (skipped)")
             continue
-        print(f"{len(df):,} satir")
+        print(f"{len(df):,} rows")
         all_frames.append(df)
         all_unknown.extend([(scn, u) for u in unk])
         all_suspicious.extend([(scn, s) for s in susp])
     if not all_frames:
-        raise RuntimeError("Hicbir senaryo yuklenemedi.")
+        raise RuntimeError("No scenario could be loaded.")
     return pd.concat(all_frames, ignore_index=True), all_unknown, all_suspicious
 
 
 if __name__ == "__main__":
     table, unknown, suspicious = load_all()
-    print(f"\nToplam satir: {len(table):,}")
-    print(f"Senaryolar: {sorted(table['condition'].unique())}")
-    print(f"Parse edilemeyen dosya: {len(unknown)}")
+    print(f"\nTotal rows: {len(table):,}")
+    print(f"Scenarios: {sorted(table['condition'].unique())}")
+    print(f"Unparseable files: {len(unknown)}")
     n_multi = int((table['membrane'].notna()).sum())
     n_memb_files = table[table['membrane'].notna()][
         ['condition','segment','transporter','solute','nephron']].drop_duplicates().shape[0]
-    print(f"Cok-membranli flux: {n_memb_files} dosya membran basina ayristirildi "
-          f"({n_multi:,} satir membran etiketli)")
+    print(f"Multi-membrane flux: {n_memb_files} files split per membrane "
+          f"({n_multi:,} membrane-labeled rows)")
     if suspicious:
-        print(f"UYARI - eslestirme tablosunda OLMAYAN cok-membranli dosya: {len(suspicious)} adet "
-              f"(stride ile dogru ayristirildi ama anatomik etiket yok; MEMBRANE_ORDER'a ekle):")
+        print(f"WARNING - multi-membrane files NOT in the mapping table: {len(suspicious)} "
+              f"(split correctly by stride but without an anatomic label; add to MEMBRANE_ORDER):")
         for item in suspicious[:10]:
             print(f"    {item}")
     table.to_parquet(OUTPUT, index=False)
-    print(f"\nYazildi -> {OUTPUT}")
+    print(f"\nWritten -> {OUTPUT}")
