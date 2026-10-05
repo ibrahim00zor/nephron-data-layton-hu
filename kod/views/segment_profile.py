@@ -111,8 +111,9 @@ else:
                 st.markdown("**Basolateral (blood)**")
                 for t in seg.get("basolateral", []) or ["—"]:
                     st.markdown(f"- {t}")
-            page = seg.get("source_page") or "?"
-            st.caption(f"Source: {cite_short(seg.get('source_key','turkmen2024'), page)}")
+            # a source is named for what is written: no summary and no page yet, no source line
+            if seg.get("summary", "").strip() and seg.get("source_page"):
+                st.caption(f"Source: {cite_short(seg.get('source_key', 'turkmen2024'), seg['source_page'])}")
 
     with st.expander("Download CSV and summary table"):
         summary_tbl = drawn.groupby("series")["value"].agg(["min", "max", "mean"]).round(3)

@@ -5,9 +5,14 @@
 [![License: CC BY 4.0](https://img.shields.io/badge/Content-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 [![Streamlit App](https://img.shields.io/badge/Live-Streamlit%20App-FF4B4B?logo=streamlit&logoColor=white)](https://nefron-veri-gezgini.streamlit.app)
 
-An interactive, citable science tool that turns the output of the Layton/Hu human-nephron
-epithelial transport model into an explorable data application for clinicians, students, and
-researchers.
+A reader for the output of a published mathematical model of the human nephron (the
+epithelial transport model of the Layton group; Hu, McDonough & Layton 2021). It lays the
+model's output out so that it can be read, compared and checked: what happens to water and to
+each solute, segment by segment, in six scenarios. It does not run the model and adds nothing
+to it.
+
+Formerly *Nefron Veri Gezgini* (Turkish). The repository and the address of the app keep that
+name, so that existing links and the DOI go on working.
 
 **Live app:** https://nefron-veri-gezgini.streamlit.app
 
@@ -15,42 +20,57 @@ researchers.
 
 ---
 
-## What it does
+## Status
 
-The app visualizes the model output for **6 scenarios** — healthy female and male, moderate
-diabetes, hypertension, and SGLT2 inhibitor (female and male). It traces the concentration
-profile along each nephron segment, separates mass and volume changes, checks physiology
-automatically, and provides an educational clinical layer.
+An early-stage project. What is here:
 
-**Pages** — the menu is organised in two worlds, plus data & quality
+- the model's output for six scenarios, read from one table, with pages that follow a solute
+  along a segment, along the nephron, across nephron types and across scenarios, and that show
+  what each transporter carries;
+- checks of that output against physiology, an inventory of the dataset, and the exact model
+  command behind every scenario;
+- a look and a structure for the site (two "worlds", one selection that travels across pages,
+  figures drawn by hand).
+
+What is not here yet:
+
+- **the clinical text.** The *Clinical world* shows the structure and the model data behind
+  three teaching cases; their text will be written from verified sources and is not there;
+- the summaries of the educational layer (segments, transporters, solutes);
+- four of the ten scenarios that were attempted, and the end of the collecting duct in two of
+  the six that are in (they did not converge in the model; see *Known limits*);
+- a layout for phones. The site is made for a desktop browser and is checked in Safari's
+  engine and in Chromium.
+
+It is for teaching and for reading a model. It is not medical advice and not a tool for
+clinical decisions.
+
+---
+
+## What it shows
+
+Six scenarios: a healthy woman and a healthy man, moderate diabetes, hypertension, and SGLT2
+inhibition in each sex.
+
+**Pages.** The menu has two worlds and a back room.
 
 | World | Page | Purpose |
 |---|---|---|
-| Model | Segment Profile | One solute in one segment; Lumen+Bath overlay; automatic mass/volume interpretation |
-| Model | Whole Nephron | Chained profile from PT → IMCD |
-| Model | Nephron Types | Superficial vs juxtamedullary (jux1–5): the effect of depth |
-| Model | Comparison | Several scenarios overlaid, with a difference table |
+| Model | Segment Profile | One solute along one segment, in the tubular fluid and the interstitium beside it; the change split into mass and water |
+| Model | Whole Nephron | One solute from the proximal tubule to the papilla, the segments set end to end |
+| Model | Nephron Types | The superficial nephron against the five juxtamedullary ones |
+| Model | Comparison | Several scenarios on one chart, with a table of how they differ |
 | Model | Transporters | Membrane fluxes per pathway and per transporter (NHE3, SGLT2, NKCC2, NCC, ENaC, Na/K-ATPase, …), with a mass-balance check |
-| Model | Interactive Anatomy (BETA) | The nephron drawn and coloured with the data: colour by concentration or load, thickness by water flow; a click on a segment selects it |
-| Clinical | Clinical Cases | Educational case interface built on the same scenarios — *not medical advice* |
-| Data & quality | Validation | Automatic physiology checks |
-| Data & quality | Data Integrity | Database inventory, convergence status, known limits |
+| Model | Interactive Anatomy (beta) | The nephron drawn and coloured with the data: colour by concentration or load, thickness by water flow; a click on a segment selects it |
+| Clinical | Clinical Cases | Three teaching cases built on the same scenarios: structure and model data only, for now |
+| Data & quality | Validation | Checks of the model's output against physiology |
+| Data & quality | Data Integrity | What is in the dataset, what converged, known limits |
 | Data & quality | Model & Provenance | The exact model command behind each scenario, the model's prescribed inputs, how to reproduce the dataset |
 
-**Linked exploration.** The selection (scenario, solute, segment, nephron type, compartment)
-travels with you from page to page, so one question can be followed across views. A clinical
-case opens the model pages with its scenarios and focus preselected and offers a way back;
-a scenario links to the clinical case built on it.
-
----|---|
-| Segment Profile | One solute in one segment; Lumen+Bath overlay; automatic mass/volume interpretation |
-| Whole Nephron | Chained flow chart from PT → IMCD |
-| Nephron Types | Superficial vs juxtamedullary (jux1–5): the effect of depth |
-| Comparison | Several scenarios overlaid, with a difference table |
-| Validation | Automatic physiology checks against textbook expectations |
-| Data Integrity | Database inventory, convergence status, known limits |
-| Interactive Anatomy (BETA) | The nephron drawn and coloured with the data: colour by concentration or load, thickness by water flow |
-| Clinical | Educational case interface (mechanism, drug/dose, model data) — *not medical advice* |
+**One selection.** The scenario, solute, segment, nephron type and compartment are chosen in
+one row under the masthead and travel from page to page, so one question can be followed
+across views. The address of a page carries the selection, so a copied address opens the same
+view.
 
 ---
 
@@ -63,7 +83,7 @@ streamlit run kod/app.py
 
 The app reads a single tidy Parquet file (`veri/nephron_veritabani.parquet`, 6 scenarios).
 
-Run the tests (page rendering, shared selection, contextual navigation):
+Run the tests (every page, the selection, the drawings, flux mass balance, provenance):
 
 ```bash
 python tests/run_all.py

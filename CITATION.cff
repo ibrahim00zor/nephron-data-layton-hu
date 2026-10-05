@@ -17,11 +17,14 @@ identifiers:
     value: "10.5281/zenodo.20489610"
     description: "Concept DOI (always points to latest version)"
 abstract: >
-  Interactive web tool for exploring the Layton/Hu human nephron mathematical
-  model. Built with Streamlit, DuckDB and Plotly. Provides multi-scenario
-  comparison (baseline, sex differences, diabetes, hypertension, SGLT2
-  inhibition), automatic mass/volume interpretation of concentration changes,
-  and an educational layer with citation-attributed content.
+  A reader for the output of the Layton/Hu mathematical model of the human
+  nephron. It does not run the model: it lays its output out for six scenarios
+  (healthy female and male, moderate diabetes, hypertension, SGLT2 inhibition
+  in each sex) so that it can be read, compared and checked: profiles along a
+  segment and along the nephron, nephron types, scenarios side by side,
+  transporter fluxes with a mass-balance check, validation and provenance
+  pages. Built with Streamlit, DuckDB and Plotly. Formerly "Nefron Veri
+  Gezgini".
 keywords:
   - "nephron"
   - "renal physiology"

@@ -58,5 +58,6 @@ else:
                 st.markdown(seg["summary"])
             if seg.get("note"):
                 st.info(f"Note: {seg['note']}")
-            page = seg.get("source_page") or "?"
-            st.caption(f"Source: {cite_short(seg.get('source_key','turkmen2024'), page)}")
+            # a source is named for what is written: no summary and no page yet, no source line
+            if seg.get("summary", "").strip() and seg.get("source_page"):
+                st.caption(f"Source: {cite_short(seg.get('source_key', 'turkmen2024'), seg['source_page'])}")

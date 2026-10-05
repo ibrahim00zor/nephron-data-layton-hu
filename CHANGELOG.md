@@ -45,6 +45,13 @@ is developed on; frame times are medians.
 - Tools: `tools/webkit_drive.swift` points at a page, clicks it and times its frames in
   WebKit; `tools/webkit_shot.swift` now photographs a page that is running.
 
+### Published (2026-10-05)
+
+- The README says plainly what this is, what is in it and what is not yet (the clinical text,
+  the educational summaries, a layout for phones), and that it was *Nefron Veri Gezgini*.
+- A source is named for what is written: the folds "About <segment>" no longer show a source
+  line while the summary and its page are still to be written.
+
 ### One selection, in one place and in the reader's words (2026-10-05)
 
 - **The selection is one row under the masthead**, the same on every page of the model world:
