@@ -3,7 +3,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20489610.svg)](https://doi.org/10.5281/zenodo.20489610)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: CC BY 4.0](https://img.shields.io/badge/Content-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
-[![Streamlit App](https://img.shields.io/badge/Live-Streamlit%20App-FF4B4B?logo=streamlit&logoColor=white)](https://nefron-veri-gezgini.streamlit.app)
+[![Streamlit App](https://img.shields.io/badge/Live-Streamlit%20App-FF4B4B?logo=streamlit&logoColor=white)](https://nephron-data-layton-hu.streamlit.app)
 
 A reader for the output of a published mathematical model of the human nephron (the
 epithelial transport model of the Layton group; Hu, McDonough & Layton 2021). It lays the
@@ -11,10 +11,10 @@ model's output out so that it can be read, compared and checked: what happens to
 each solute, segment by segment, in six scenarios. It does not run the model and adds nothing
 to it.
 
-Formerly *Nefron Veri Gezgini* (Turkish). The repository and the address of the app keep that
-name, so that existing links and the DOI go on working.
+Formerly *Nefron Veri Gezgini* (Turkish). Links to the repository under its old name are
+redirected by GitHub, and the DOI is unchanged.
 
-**Live app:** https://nefron-veri-gezgini.streamlit.app
+**Live app:** https://nephron-data-layton-hu.streamlit.app
 
 **Citation:** Zor, İ. (2026). *Nephron Data (Layton/Hu).* Zenodo. https://doi.org/10.5281/zenodo.20489610
 
@@ -179,7 +179,7 @@ Dual-licensed (academic standard):
 If you use this project in academic work, please use the format in [`CITATION.cff`](CITATION.cff). Short form:
 
 > Zor, İ. (2026). *Nephron Data (Layton/Hu)* (Computer software).
-> https://github.com/ibrahim00zor/nefron-veri-gezgini
+> https://github.com/ibrahim00zor/nephron-data-layton-hu
 
 The data is derived from the Hu et al. 2021 model. When citing this tool, also cite the original paper:
 

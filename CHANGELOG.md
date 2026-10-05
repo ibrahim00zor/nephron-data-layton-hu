@@ -47,6 +47,8 @@ is developed on; frame times are medians.
 
 ### Published (2026-10-05)
 
+- The repository and the app take the name of the project: `nephron-data-layton-hu` (they were
+  `nefron-veri-gezgini`). GitHub redirects the old repository address; the DOI is unchanged.
 - The README says plainly what this is, what is in it and what is not yet (the clinical text,
   the educational summaries, a layout for phones), and that it was *Nefron Veri Gezgini*.
 - A source is named for what is written: the folds "About <segment>" no longer show a source

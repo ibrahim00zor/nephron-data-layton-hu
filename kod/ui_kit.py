@@ -444,7 +444,7 @@ def colophon():
         "<div class='nd-colophon'>"
         "<b>Nephron Data (Layton/Hu)</b> · İbrahim Zor, 2026 · "
         "<a href='https://doi.org/10.5281/zenodo.20489610' target='_blank'>doi:10.5281/zenodo.20489610</a> · "
-        "<a href='https://github.com/ibrahim00zor/nefron-veri-gezgini' target='_blank'>source</a><br>"
+        "<a href='https://github.com/ibrahim00zor/nephron-data-layton-hu' target='_blank'>source</a><br>"
         "Model: Hu R., McDonough A.A., Layton A.T. (2021). <i>Sex differences in solute and water "
         "handling in the human kidney.</i> iScience 24(6):102667.<br>"
         "Code under the MIT licence, content under CC BY 4.0. "

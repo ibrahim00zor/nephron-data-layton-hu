@@ -12,7 +12,7 @@ import nav
 import style
 from ui_kit import REFERENCES, build_id, dataset_fingerprint, health_metrics, reference_card
 
-REPOSITORY = "https://github.com/ibrahim00zor/nefron-veri-gezgini"
+REPOSITORY = "https://github.com/ibrahim00zor/nephron-data-layton-hu"
 TOOL_DOI = "10.5281/zenodo.20489610"
 MODEL_DOI = "10.1016/j.isci.2021.102667"
 

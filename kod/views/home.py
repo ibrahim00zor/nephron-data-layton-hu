@@ -225,7 +225,7 @@ with text:
         "in six scenarios.</p>"
         "<div class='nd-byline'>İbrahim Zor · 2026 · "
         "<a href='https://doi.org/10.5281/zenodo.20489610' target='_blank'>doi:10.5281/zenodo.20489610</a> · "
-        "<a href='https://github.com/ibrahim00zor/nefron-veri-gezgini' target='_blank'>source on GitHub</a></div>",
+        "<a href='https://github.com/ibrahim00zor/nephron-data-layton-hu' target='_blank'>source on GitHub</a></div>",
         unsafe_allow_html=True,
     )
     st.markdown("---")
