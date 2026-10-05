@@ -2,8 +2,8 @@
 ui_kit.py — Shared UI components.
 
 app.py (the router) and every file under views/ import this module. The page frame
-(theme, CSS), the sidebar, query helpers, chart helper, and citation footer all come
-from here. Page files hold only their own logic — boilerplate lives here.
+(theme, CSS), the selection row, the reader's words, query helpers, chart helper, and
+citation footer all come from here. Page files hold only their own logic — boilerplate lives here.
 Navigation and the shared selection context live in nav.py.
 """
 import html
@@ -179,23 +179,6 @@ def segment_names():
     return {code: info["full_name"] for code, info in SEGMENT.items() if info.get("full_name")}
 
 
-def abbr(text, meaning=None):
-    """A term that explains itself under the pointer."""
-    text = html.escape(str(text))
-    return f"<abbr title='{html.escape(meaning, quote=True)}'>{text}</abbr>" if meaning else text
-
-
-def selection_with_names():
-    from education import SOLUTE
-    solute, segment, nephron, compartment = (nav.get(name) for name in nav.SELECTION)
-    return " · ".join((
-        abbr(solute, SOLUTE.get(solute, {}).get("full_name")),
-        abbr(segment, segment_names().get(segment)),
-        abbr(nephron, NEPHRON_NAME.get(nephron)),
-        abbr(compartment, COMPARTMENT_NAME.get(compartment)),
-    ))
-
-
 def loop_depths():
     """How deep the long loop of each juxtamedullary nephron reaches, relative to the deepest
     (from the length the model gives its long descending limb in the baseline scenario)."""
@@ -246,67 +229,149 @@ def dataset_fingerprint():
 
 
 # ============================================================
-#  The selection panel (the sidebar; rendered once per run by app.py)
-#  It holds what is selected and travels across pages: the scenario, and the solute,
-#  segment, nephron and compartment. Where to go is the masthead's business (nav.py).
+#  What the reader is told
 # ============================================================
-def render_sidebar():
-    scenarios = scenario_list()
-    with st.sidebar:
-        scenario = nav.select(
-            st, "Scenario", scenarios, "scenario", fallback="F_normal",
-            format_func=lambda s: SCENARIO_LABEL.get(s, s),
-            help="Charts and queries are filtered by this scenario. It stays selected as you change pages.",
-        )
+# Codes (F_diab_mod, Bath, jux3, glu) are the words of the dataset. They stay in the data,
+# in the address of a page, in what is downloaded and on the pages about the data. What a
+# field, a figure or a table says to the reader is said in the words below.
+NEPHRON_TYPES = ["sup", "jux1", "jux2", "jux3", "jux4", "jux5"]     # what a reader chooses between;
+# the collecting duct is shared by all of them and is read from "merged" without being asked
+NEPHRON_WORD = {"sup": "superficial", "jux1": "juxtamedullary 1", "jux2": "juxtamedullary 2",
+                "jux3": "juxtamedullary 3", "jux4": "juxtamedullary 4", "jux5": "juxtamedullary 5",
+                "merged": "collecting duct"}
+COMPARTMENT_WORD = {"Lumen": "lumen", "Cell": "cell", "Bath": "interstitium"}
+SERIES_WORD = {"Lumen": "tubular fluid", "Cell": "cell", "Bath": "interstitium"}   # as lines of one chart
+
+
+def scenario_word(code):
+    return SCENARIO_LABEL.get(code, code)
+
+
+def solute_word(code):
+    return "glucose" if code == "glu" else str(code)
+
+
+def nephron_word(code):
+    return NEPHRON_WORD.get(code, str(code))
+
+
+def compartment_word(code):
+    return COMPARTMENT_WORD.get(code, str(code))
+
+
+def selection_in_words():
+    """The selection that travels, as one would say it: "Na · PT · superficial · lumen"."""
+    return " · ".join((solute_word(nav.get("solute")), str(nav.get("segment")),
+                       nephron_word(nav.get("nephron")), compartment_word(nav.get("compartment"))))
+
+
+def _capital(word):
+    return lambda code: word(code)[:1].upper() + word(code)[1:]
+
+
+# ============================================================
+#  The selection: one row, the same on every page
+# ============================================================
+# What is selected travels across pages: the scenario, and the solute, segment, nephron and
+# compartment. It is chosen in one row, always in this order and under these names. A page
+# says which values it offers for each field; a field it does not use is still shown, with
+# what is kept in it, but cannot be changed there.
+FIELDS = ("scenario", "solute", "segment", "nephron", "compartment")
+_FIELD = {   # name -> label, how a value is said, width of the field in the row
+    "scenario":    ("Scenario", scenario_word, 2.45),
+    "solute":      ("Solute", solute_word, 1.0),
+    "segment":     ("Segment", str, 1.0),
+    "nephron":     ("Nephron", _capital(nephron_word), 1.95),
+    "compartment": ("Compartment", _capital(compartment_word), 1.45),
+}
+_FIELD_HELP = {
+    "scenario": "Every chart and number is read from this scenario. It stays selected as you change pages.",
+    "nephron": "The superficial nephron, or one of the five juxtamedullary ones (1 has the shortest long "
+               "loop, 5 the longest). The collecting duct (CCD, OMCD, IMCD) is shared by all of them.",
+}
+_KEPT = "Not used on this page. It is kept for the pages that do use it."
+
+
+def selection(solute=None, segment=None, nephron=None, compartment=None, scenario=True, whole=True):
+    """The selection row. Returns {field: what this page shows for it}.
+
+    For each field, pass the values this page offers (a list), or a function of what has
+    been resolved so far, for a list that depends on another field (the solutes that have a
+    flux depend on the segment). A field that is left out is shown but cannot be changed.
+    `scenario=False` does the same for the scenario. With `whole=False` only the fields the
+    page uses are shown (for a page outside the model world that reads one scenario).
+    """
+    offered = {"scenario": scenario_list() if scenario else None, "segment": segment, "nephron": nephron,
+               "compartment": compartment, "solute": solute}
+    values = {}
+    for name, options in offered.items():          # solute last: it may depend on the others
+        if callable(options):
+            options = offered[name] = list(options(values))
+        values[name] = nav.get(name) if options is None else nav.shown(name, options, nav.DEFAULTS[name])
+
+    names = [name for name in FIELDS if whole or offered[name] is not None]
+    with st.container(key="nd_selection"):
+        full = sum(width for _, _, width in _FIELD.values()) + 0.6
+        widths = [_FIELD[name][2] for name in names]
+        widths.append(0.6 if whole else full - sum(widths))      # the map, or the room the other fields would take
+        columns = st.columns(widths, vertical_alignment="bottom")
+        for column, name in zip(columns, names):
+            label, word, _ = _FIELD[name]
+            if offered[name] is None:
+                column.selectbox(label, [values[name]], format_func=word, disabled=True, help=_KEPT,
+                                 key=f"_kept_{nav.current_page()}_{name}")
+            else:
+                values[name] = nav.select(column, label, offered[name], name, fallback=nav.DEFAULTS[name],
+                                          format_func=word, help=_FIELD_HELP.get(name))
+        if whole:
+            columns[-1].markdown(_where(), unsafe_allow_html=True)
+        st.markdown(selection_note(values["scenario"] if scenario else None), unsafe_allow_html=True)
+    return values
+
+
+def _where():
+    """The small map at the end of the row: where the selected segment lies. A click on it
+    selects a segment; "[" and "]" step along the nephron (events.py reads the addresses)."""
+    segment, nephron = nav.get("segment"), nav.get("nephron")
+    long_loop = str(nephron).startswith("jux")
+    order = SEG_ORDER_JUX if long_loop else SEG_ORDER_SUP
+    # the two thin limbs exist only in a long loop
+    links = {code: nav.href(segment=code, **({} if long_loop or code not in ("LDL", "LAL") else {"nephron": "jux5"}))
+             for code in SEG_ORDER_JUX}
+    before, after = nav.neighbours(order)
+    steps = "".join(f" data-{key}='{html.escape(link, quote=True)}'"
+                    for key, link in (("prev", before), ("next", after)) if link)
+    return (f"<div class='nd-where'{steps}>"
+            + nephron_figure.locator(segment, width=34, links=links, names=segment_names(), long_loop=long_loop,
+                                     depth=loop_depths().get(nephron, 1.0))
+            + "</div>")
+
+
+def selection_note(scenario):
+    """One quiet line under the row: what the scenario is, what did not converge in it, the
+    clinical case built on it, and the way back to the default selection."""
+    def go(page, label, **selection):
+        return (f"<a class='nd-go' href='{html.escape(nav.href(page, **selection), quote=True)}' "
+                f"target='_self'>{label}</a>")
+
+    parts = []
+    if scenario:
         detail = SCENARIO_DETAIL.get(scenario, "")
         if detail:
-            st.markdown(f"<div class='nd-side-about'>{detail}</div>", unsafe_allow_html=True)
+            parts.append(f"<i>{html.escape(detail)}</i>")
+        broken = integrity_map().get(scenario)
+        if broken:
+            parts.append(f"<span class='warn'>{', '.join(sorted(broken))} did not converge in this scenario "
+                         f"(collecting duct): its data is hidden in the charts; proximal tubule to DCT is "
+                         f"reliable. See {go('integrity', 'Data Integrity')}.</span>")
+        case = CASE_BY_SCENARIO.get(scenario)
+        if case:
+            parts.append(go("clinical", f"Clinical case: {html.escape(CASES[case]['button'])} →", case=case))
+    if not nav.is_default_selection():
+        defaults = {name: nav.DEFAULTS[name] for name in nav.SELECTION}
+        parts.append(go(None, "Reset the selection", **defaults))
+    return "<div class='nd-selection-note'>" + " <span class='sep'>·</span> ".join(parts) + "</div>"
 
-        # Model world -> clinical world: the case (if any) that is built on this scenario
-        case_key = CASE_BY_SCENARIO.get(scenario)
-        if case_key and st.button(f"Clinical case: {CASES[case_key]['button']} →",
-                                  key="_sidebar_case", width="stretch",
-                                  help="Open the clinical case that uses this scenario."):
-            nav.go("clinical", case=case_key)
-
-        broken = integrity_map()
-        if scenario in broken:
-            segs = ", ".join(sorted(broken[scenario]))
-            st.warning(
-                f"**{segs}** did not converge in this scenario (collecting duct). Its data is "
-                f"invalid and is hidden in the charts; proximal tubule to DCT is reliable. "
-                f"See Data Integrity."
-            )
-
-        # The selection that travels with the user across pages
-        st.markdown("---")
-        segment, nephron = nav.get("segment"), nav.get("nephron")
-        long_loop = str(nephron).startswith("jux")
-        order = SEG_ORDER_JUX if long_loop else SEG_ORDER_SUP
-        # a click on the map selects that segment (the two thin limbs exist only in a long loop)
-        links = {code: nav.href(segment=code, **({} if long_loop or code not in ("LDL", "LAL")
-                                                  else {"nephron": "jux5"}))
-                 for code in SEG_ORDER_JUX}
-        before, after = nav.neighbours(order)
-        steps = "".join(f" data-{key}='{html.escape(link, quote=True)}'"
-                        for key, link in (("prev", before), ("next", after)) if link)
-        st.markdown(
-            f"<div class='nd-where'{steps}>"
-            + nephron_figure.locator(segment, links=links, names=segment_names(), long_loop=long_loop,
-                                     depth=loop_depths().get(nephron, 1.0))
-            + f"<div><div class='nd-label'>Kept across pages</div>"
-            f"<div class='nd-side-meta' style='font-size:0.8rem;color:{style.INK_SOFT};'>"
-            f"{selection_with_names()}</div>"
-            f"<div class='nd-side-meta'>marked: where {html.escape(str(segment))} lies</div>"
-            f"</div></div>",
-            unsafe_allow_html=True,
-        )
-        if not nav.is_default_selection():
-            if st.button("Reset selection", key="_sidebar_reset", width="stretch"):
-                nav.reset_selection()
-                st.rerun()
-
-    return scenario
 
 # ============================================================
 #  Chart helper

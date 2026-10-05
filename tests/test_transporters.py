@@ -54,7 +54,7 @@ def test_transporters_page():
     # a solute no transporter moves in this segment: fall back, say so, keep the selection
     at = new_app("transporters", solute="urea", segment="mTAL")
     assert main_select(at, "Solute").value != "urea"
-    assert any("No exported flux moves `urea`" in i.value for i in at.info)
+    assert any("No exported flux moves urea" in i.value for i in at.info)
     assert at.session_state["ctx_solute"] == "urea"
 
     # collecting duct: flux density only, and the page says why there is no total

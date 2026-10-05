@@ -3,8 +3,9 @@ app.py — Nephron Data (Layton/Hu) · entry point.
 
 This file is the frame. It runs on every page view and does the shared work once: routes
 to the selected page, writes the stylesheet, answers a link that was just followed, draws
-the masthead (the worlds and their pages) and the selection panel, runs the page, and ends
-with the colophon. Page bodies live in views/.
+the masthead (the worlds and their pages), runs the page, and ends with the colophon. The
+selection row under the masthead is drawn by the page itself (ui_kit.selection), since a page
+says which fields it offers. Page bodies live in views/.
 
 Run with:  streamlit run kod/app.py
 """
@@ -15,7 +16,7 @@ import nav
 import nephron_figure
 import style
 from clinical_cases import CASES
-from ui_kit import APP_NAME, NEPHRONS, apply_frame, colophon, options, render_sidebar, scenario_list
+from ui_kit import APP_NAME, NEPHRONS, apply_frame, colophon, options, scenario_list, selection_in_words
 
 # The pages. Streamlit only routes; the menu itself is the masthead (nav.render_masthead),
 # so that it can show the two worlds and stay in view while the page scrolls.
@@ -31,7 +32,7 @@ st.set_page_config(
     page_title=f"{nav.title(current)} · {APP_NAME}",
     page_icon=nephron_figure.mark(background=style.PAPER),
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 apply_frame()
 
@@ -50,7 +51,6 @@ if followed:
     if target and target != current:
         st.switch_page(nav.path(target))
 nav.render_masthead(nephron_figure.mark())
-render_sidebar()
 
 # Everything under the masthead is one block, named after the page, so that a page can be
 # turned as a whole (see "Turning the page" in nav.py).
@@ -60,6 +60,6 @@ with st.container(key=nav.body_key(current)):
 
     selected.run()
 
-    nav.render_explore_bar()
+    nav.render_explore_bar(selection_in_words())
     colophon()
 nav.write_url()     # the address now says what this page shows

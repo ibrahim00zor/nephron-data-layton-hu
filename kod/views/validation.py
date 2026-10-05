@@ -15,9 +15,9 @@ import streamlit as st
 import nav
 import style
 import transport
-from ui_kit import DB, scalar, SCENARIO_LABEL, segment_broken
+from ui_kit import DB, scalar, selection, SCENARIO_LABEL, segment_broken
 
-scenario = nav.get("scenario")
+scenario = selection(whole=False)["scenario"]      # this page reads one scenario and nothing else
 
 st.markdown("## Validation")
 st.caption(f"Does the model's output behave as physiology expects? Checked for "
@@ -177,7 +177,6 @@ unavailable = len(outputs) - total
 m1, m2, m3 = st.columns(3)
 m1.metric("Output checks passed", f"{passed} / {total}")
 m2.metric("Success", f"{passed/total*100:.0f} %" if total else "—")
-m3.metric("Scenario", scenario)
 if unavailable:
     st.caption(f"{unavailable} check(s) not available for this scenario and left out of the score.")
 

@@ -6,28 +6,23 @@ import plotly.express as px
 import nav
 import style
 from ui_kit import (
-    q, DB, figure, neph_for, nephron_phrase,
-    options, scenario_list, SCENARIO_COLOR, SCENARIO_LABEL, NEPHRONS, valid_data, segment_broken,
+    q, DB, figure, neph_for, nephron_phrase, selection, solute_word, compartment_word, scenario_word,
+    options, scenario_list, SCENARIO_COLOR, SCENARIO_LABEL, NEPHRON_TYPES, valid_data, segment_broken,
 )
-
-st.markdown("## Scenario Comparison")
-st.caption("Two to four scenarios on one chart, for one solute in one segment, "
-           "with a table of how they differ at the outlet.")
 
 all_scenarios = scenario_list()
 segs, _ = options()
 
-# Top selectors (bound to the shared selection)
-c1, c2, c3 = st.columns(3)
-solute = nav.select(c1, "Solute", ["Na", "K", "Cl", "urea", "glu", "HCO3", "NH3", "NH4"], "solute",
-                    fallback="Na")
-segment = nav.select(c2, "Segment", segs, "segment", fallback="PT")
-compartment = nav.select(c3, "Compartment", ["Lumen", "Cell", "Bath"], "compartment", fallback="Lumen")
-
-nephron_req = nav.select(st, "Nephron", NEPHRONS, "nephron", fallback="sup",
-                         help="The collecting duct (CCD, OMCD, IMCD) is shared by all nephrons and is "
-                              "always read from the merged nephron.")
+# The single scenario of the selection is not used here: this page sets several side by side.
+chosen = selection(solute=["Na", "K", "Cl", "urea", "glu", "HCO3", "NH3", "NH4"], segment=segs,
+                   nephron=NEPHRON_TYPES, compartment=["Lumen", "Cell", "Bath"], scenario=False)
+solute, segment, nephron_req, compartment = (chosen[name] for name in ("solute", "segment", "nephron", "compartment"))
 nephron = neph_for(segment, nephron_req)
+name = solute_word(solute)
+
+st.markdown("## Scenario Comparison")
+st.caption("Two to four scenarios on one chart, for one solute in one segment, "
+           "with a table of how they differ at the outlet.")
 
 # Multi-scenario selection
 selected = nav.multiselect(
@@ -65,17 +60,19 @@ if df.empty:
                "or the selected scenarios did not converge in this segment).")
     st.stop()
 
+# in the figure and the table a scenario goes by its name, not by its code
+named = df.assign(scenario=df["condition"].map(scenario_word))
 fig = px.line(
-    df, x="position", y="value", color="condition",
-    title=f"{segment} — {solute} ({compartment}, {nephron})",
+    named, x="position", y="value", color="scenario",
+    title=f"{segment} — {name} ({compartment_word(compartment)})",
     labels={"position": "Position (0 = inlet, 1 = outlet)",
-            "value": f"{solute} (mM)", "condition": "Scenario"},
-    color_discrete_map=SCENARIO_COLOR,
+            "value": f"{name} (mM)", "scenario": "Scenario"},
+    color_discrete_map={scenario_word(code): colour for code, colour in SCENARIO_COLOR.items()},
+    category_orders={"scenario": [scenario_word(code) for code in selected]},
 )
-fig.update_layout(hovermode="x unified", height=500,
-                  legend=dict(title_text="SCENARIO"))
+fig.update_layout(hovermode="x unified", height=500)
 fig.update_traces(line=dict(width=2), hovertemplate="%{y:.4g}")
-figure(fig, caption=f"{solute} along the {segment} of {nephron_phrase(nephron)} ({compartment.lower()}), "
+figure(fig, caption=f"{name} along the {segment} of {nephron_phrase(nephron)} ({compartment_word(compartment)}), "
                     f"one line per scenario")
 
 # ============================================================
@@ -99,7 +96,7 @@ if ref in summary.index:
     ref_outlet = summary.loc[ref, "outlet"]
     summary["outlet vs reference (%)"] = ((summary["outlet"] - ref_outlet) / ref_outlet * 100).round(1)
 
-style.table(summary.rename_axis("scenario"), index=True)
+style.table(summary.rename(index=scenario_word).rename_axis("scenario"), index=True)
 
 # Automatic observation
 if len(summary) >= 2 and "outlet vs reference (%)" in summary.columns:
@@ -108,8 +105,8 @@ if len(summary) >= 2 and "outlet vs reference (%)" in summary.columns:
     if biggest and biggest != ref:
         ratio = summary.loc[biggest, "outlet vs reference (%)"]
         st.info(
-            f"Against `{ref}`, the scenario that differs most is `{biggest}` "
-            f"({SCENARIO_LABEL.get(biggest, biggest)}): {solute} at the outlet of `{segment}` is "
+            f"Against {scenario_word(ref)}, the scenario that differs most is "
+            f"{scenario_word(biggest)}: {name} at the outlet of the {segment} is "
             f"**{ratio:+.1f}%** different."
         )
 

@@ -4,26 +4,25 @@ import plotly.express as px
 
 import nav
 import style
-from ui_kit import q, DB, figure, options, CD_SEGMENTS, SCENARIO_LABEL, valid_data
+from ui_kit import (
+    q, DB, figure, options, selection, solute_word, compartment_word, CD_SEGMENTS, NEPHRON_TYPES,
+    NEPHRON_WORD, SCENARIO_LABEL, valid_data,
+)
 from education import segment_info, cite_short
-
-scenario = nav.get("scenario")
-
-st.markdown("## Nephron Types")
-st.caption("The superficial nephron against the five juxtamedullary ones, for one solute in one segment. "
-           "jux5 descends furthest into the medulla.")
 
 segs, solutes = options()
 compare_segs = [s for s in segs if s not in CD_SEGMENTS]
+chosen = selection(solute=solutes, segment=compare_segs, compartment=["Lumen", "Cell", "Bath"])
+scenario, solute, segment, compartment = (chosen[name] for name in ("scenario", "solute", "segment", "compartment"))
+name = solute_word(solute)
 
-c1, c2, c3 = st.columns(3)
-solute = nav.select(c1, "Solute", solutes, "solute", fallback="Na")
-segment = nav.select(c2, "Segment", compare_segs, "segment", fallback="PT")
-compartment = nav.select(c3, "Compartment", ["Lumen", "Cell", "Bath"], "compartment", fallback="Lumen")
+st.markdown("## Nephron Types")
+st.caption("The superficial nephron against the five juxtamedullary ones, for one solute in one segment. "
+           "Juxtamedullary 5 descends furthest into the medulla.")
 
 if nav.get("segment") in CD_SEGMENTS:
-    st.info(f"`{nav.get('segment')}` is a collecting-duct segment, shared by all nephron types "
-            f"(merged), so there is nothing to compare here — showing `{segment}` instead. "
+    st.info(f"The {nav.get('segment')} belongs to the collecting duct, which all nephron types share, "
+            f"so there is nothing to compare here: the {segment} is shown instead. "
             f"Your selection is unchanged on the other pages.")
 
 df = q(
@@ -39,16 +38,16 @@ df, _ = valid_data(df, "con")
 if df.empty:
     st.warning(f"Segment `{segment}` only exists in a single nephron type.")
 else:
-    color_map = style.NEPHRON_COLOR
-    fig = px.line(df, x="position", y="value", color="nephron",
-                  title=f"{segment} — {solute} ({compartment}) — by nephron type",
-                  labels={"position": "Position (0–1)", "value": f"{solute} (mM)",
+    drawn = df.assign(nephron=df["nephron"].map(NEPHRON_WORD))
+    fig = px.line(drawn, x="position", y="value", color="nephron",
+                  title=f"{segment} — {name} ({compartment_word(compartment)}) — by nephron type",
+                  labels={"position": "Position (0–1)", "value": f"{name} (mM)",
                           "nephron": "Nephron"},
-                  color_discrete_map=color_map,
-                  category_orders={"nephron": ["sup","jux1","jux2","jux3","jux4","jux5"]})
+                  color_discrete_map={NEPHRON_WORD[code]: colour for code, colour in style.NEPHRON_COLOR.items()},
+                  category_orders={"nephron": [NEPHRON_WORD[code] for code in NEPHRON_TYPES]})
     fig.update_layout(hovermode="x unified", height=480)
     fig.update_traces(line=dict(width=2), hovertemplate="%{y:.4g}")
-    figure(fig, caption=f"{solute} along the {segment} ({compartment.lower()}), the superficial nephron "
+    figure(fig, caption=f"{name} along the {segment} ({compartment_word(compartment)}), the superficial nephron "
                         f"against the juxtamedullary ones; {SCENARIO_LABEL.get(scenario, scenario)}")
 
     with st.expander(f"About {segment} — info and citation"):

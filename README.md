@@ -104,12 +104,12 @@ transporter flux density pmol/(min·cm²) (1 model unit = 600; verified by mass 
 ├── veri/
 │   └── nephron_veritabani.parquet   # 6 scenarios, one tidy table
 ├── kod/
-│   ├── app.py             # entry point / router: menu, frame, sidebar, then the page
+│   ├── app.py             # entry point / router: frame and masthead, then the page
 │   ├── nav.py             # page registry, masthead, shared selection, links that carry it
-│   ├── ui_kit.py          # shared: frame, sidebar, queries, chart helper, citation footer
+│   ├── ui_kit.py          # shared: frame, the selection row, the reader's words, queries, chart helper
 │   ├── style.py           # the look: palette, chart template, stylesheet
 │   ├── hand.py            # the hand that draws: the wander of a line and the tooth of the paper, as geometry
-│   ├── nephron_figure.py  # the nephron drawing: Home figure, sidebar locator, logo
+│   ├── nephron_figure.py  # the nephron drawing: Home figure, the small map of the selection row, logo
 │   ├── anatomy_figure.py  # the drawing of the Interactive Anatomy page, coloured and sized by the data
 │   ├── events.py          # clicks, pointer cards, keys and page turns, answered in place (v2 component)
 │   ├── clinical_cases.py  # which scenario/focus each clinical case is built on

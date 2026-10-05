@@ -8,9 +8,21 @@ import anatomy_figure
 import nav
 import nephron_figure
 import style
-from ui_kit import CD_SEGMENTS, DB, NEPHRONS, SOURCE_NOTE, options, q, segment_broken, segment_names
+from ui_kit import (
+    CD_SEGMENTS, DB, NEPHRON_TYPES, SOURCE_NOTE, nephron_word, options, q, segment_broken, segment_names,
+    selection, solute_word,
+)
 
-scenario = nav.get("scenario")
+# ============================================================
+#  What to show: the shared selection, then two choices that belong to this page
+# ============================================================
+segs, sol = options()
+chosen = selection(solute=sol, segment=segs, nephron=NEPHRON_TYPES, compartment=["Lumen", "Cell", "Bath"])
+scenario, solute, focus, nephron, compartment = (
+    chosen[name] for name in ("scenario", "solute", "segment", "nephron", "compartment"))
+long_loop = str(nephron).startswith("jux")
+drawn = anatomy_figure.order(long_loop)
+name = solute_word(solute)
 
 st.markdown("## Interactive Anatomy")
 st.caption(
@@ -19,22 +31,6 @@ st.caption(
     "it is drawn on is the interstitial osmolality the model is given. Point at a segment for its "
     "values, click it to select it. This page is still a beta."
 )
-
-# ============================================================
-#  What to show (the first four are the shared selection)
-# ============================================================
-c1, c2, c3, c4 = st.columns(4)
-segs, sol = options()
-solute = nav.select(c1, "Solute", sol, "solute", fallback="Na")
-compartment = nav.select(c2, "Compartment", ["Lumen", "Cell", "Bath"], "compartment", fallback="Lumen")
-nephron = nav.select(c3, "Nephron", NEPHRONS, "nephron", fallback="sup",
-                     help="The collecting duct (CCD, OMCD, IMCD) is shared by all nephrons and is "
-                          "always read from the merged nephron.")
-long_loop = str(nephron).startswith("jux")
-drawn = anatomy_figure.order(long_loop)
-focus = nav.select(c4, "Selected segment", segs, "segment", fallback="PT",
-                   help="The segment in your selection. It is marked on the drawing and in the chart, "
-                        "and it is the one the other pages open with. A click on the drawing changes it.")
 
 COLOURS = ["concentration", "load (flux)"]
 
@@ -111,7 +107,7 @@ def _span(data, low=0.0, high=100.0):
 values = load if by_load else concentration
 low, high = _span(values)
 flow_low, flow_high = _span(water)
-title = f"{solute} load" if by_load else f"{solute} concentration"
+title = f"{name} load" if by_load else f"{name} concentration"
 unit = "pmol/min" if by_load else "mM"
 
 # The ground: the interstitial osmolality by depth, from the mean of the segments that lie there.
@@ -184,7 +180,8 @@ if focus in drawn:
     st.markdown(
         f"<div class='nd-reading {nav.changed('anatomy_reading', (scenario, solute, compartment, nephron, focus))}'>"
         f"<span class='nd-label'>Selected on the drawing</span><b>{focus}</b><i>{names.get(focus, '')}</i>"
-        f"<span class='nd-side-meta'>{'merged' if focus in CD_SEGMENTS else nephron} nephron</span></div>"
+        f"<span class='nd-side-meta'>{'collecting duct' if focus in CD_SEGMENTS else nephron_word(nephron) + ' nephron'}"
+        f"</span></div>"
         f"<table class='nd-table' style='max-width:30rem;'><tbody>{facts}</tbody></table>"
         + anatomy_figure.pin(focus, width + 1.2),
         unsafe_allow_html=True,

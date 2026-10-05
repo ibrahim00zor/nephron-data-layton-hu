@@ -525,10 +525,23 @@ a.nd-brand small {{ font-weight: 400; font-size: 0.82rem; color: {MUTED}; letter
 }}
 .nd-pages a.nd-nav {{ font-size: 0.95rem; }}
 
-/* ---------- the selection panel (the sidebar) ---------- */
-[data-testid="stSidebarHeader"]::before {{
-  content: "The selection"; font-family: {SERIF}; font-style: italic; font-size: 1.02rem; color: {MUTED};
+/* ---------- the selection: one row under the masthead, the same on every page ---------- */
+.st-key-nd_selection {{ gap: 0.3rem !important; padding: 0.5rem 0 0; margin-bottom: 0.3rem; }}
+.st-key-nd_selection [data-testid="stWidgetLabel"] p {{ font-size: 0.88rem; color: {MUTED}; }}
+.st-key-nd_selection [data-testid="stHorizontalBlock"] {{ gap: 1.1rem; }}
+/* a field that is kept but cannot be changed on this page is written lightly */
+.st-key-nd_selection [data-testid="stSelectbox"]:has(input:disabled) div[role="group"] {{
+  background-image: {RULE_LIGHT}; opacity: 0.62;
 }}
+.st-key-nd_selection [data-testid="stSelectbox"]:has(input:disabled) svg {{ visibility: hidden; }}
+.st-key-nd_selection .nd-where {{ justify-content: flex-end; padding-bottom: 0.15rem; }}
+.nd-selection-note {{ font-size: 0.86rem; line-height: 1.5; color: {MUTED}; }}
+.st-key-nd_selection .nd-selection-note {{      /* under the row: the line that closes it */
+  min-height: 1.9rem; padding: 0.1rem 0 0.7rem; margin-bottom: 1rem;
+  background: {RULE_LIGHT} left bottom / 100% 6px no-repeat;
+}}
+.nd-selection-note .warn {{ color: {ACCENT}; }}
+.nd-selection-note .sep {{ color: {FAINT}; margin: 0 0.2rem; }}
 
 /* ---------- a figure is named under it ---------- */
 .nd-figcap {{

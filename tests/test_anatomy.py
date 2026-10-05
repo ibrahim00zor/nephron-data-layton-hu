@@ -73,6 +73,34 @@ def test_the_short_loop_is_closed_and_the_tubule_is_one_line():
     assert max(numbers[1::2]) < anatomy.OUTER_END
 
 
+def _corners(d):
+    """The points and control points of a path written by hand.through, as (x, y)."""
+    numbers = [float(v) for v in re.findall(r"-?\d+\.?\d*", d)]
+    return list(zip(numbers[0::2], numbers[1::2]))
+
+
+def test_the_long_loop_turns_in_a_hairpin_not_in_a_corner():
+    import math
+    lines = anatomy.layout(True)
+    down, up = _corners(lines["LDL"]["firm"]), _corners(lines["LAL"]["firm"])
+    assert down[-1] == up[0]                                   # the two thin limbs meet at the tip ...
+    arrive = math.atan2(down[-1][1] - down[-2][1], down[-1][0] - down[-2][0])
+    leave = math.atan2(up[1][1] - up[0][1], up[1][0] - up[0][0])
+    assert abs(math.degrees(leave - arrive)) < 3               # ... without changing direction there
+    assert down[-1][1] >= max(y for _, y in down + up) - 1     # and the tip is the lowest point of the loop
+    # the bend is as wide as the loop, like the bend of the short loop
+    assert abs((up[0][0] - down[0][0]) - anatomy._BEND) < 4
+
+
+def test_the_ground_is_washed_in_over_the_pencil_and_under_the_colour():
+    # where the tooth of the paper shows through a line it shows the ground, not bare paper;
+    # and the colour of a segment (the data) is not tinted by the ground
+    svg = _draw()
+    wash = svg.index("fill='url(#na-ground)'")
+    assert svg.index("stroke='url(#na-tooth)'") < wash < svg.index("class='na-tube'")
+    assert anatomy.wall(10) - 10 >= 3.5                        # a pencil line thick enough to carry a grain
+
+
 def test_colour_thickness_and_pace_follow_the_data():
     assert anatomy.shade(anatomy.YL_OR_RD, 8, 8, 262) == anatomy.YL_OR_RD[0]
     assert anatomy.shade(anatomy.YL_OR_RD, 262, 8, 262) == anatomy.YL_OR_RD[-1]

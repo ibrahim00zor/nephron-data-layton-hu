@@ -1,32 +1,28 @@
 """segment_profile.py — Single segment, single solute profile."""
 import streamlit as st
 
-import nav
 import style
 from ui_kit import (
-    q, DB, make_chart, figure, neph_for, nephron_phrase,
-    options, NEPHRONS, SCENARIO_LABEL, valid_data, segment_broken,
+    q, DB, make_chart, figure, neph_for, nephron_phrase, selection, solute_word,
+    options, NEPHRON_TYPES, SCENARIO_LABEL, SERIES_WORD, valid_data, segment_broken,
 )
 from education import segment_info, cite_short
 from interpretation import interpret
 
-scenario = nav.get("scenario")
+segs, solutes = options()
+chosen = selection(solute=solutes, segment=segs, nephron=NEPHRON_TYPES)
+scenario, solute, segment, nephron_req = (chosen[name] for name in ("scenario", "solute", "segment", "nephron"))
+nephron = neph_for(segment, nephron_req)
+name = solute_word(solute)
 
 st.markdown("## Segment Profile")
 st.caption("One solute along one segment, in the lumen and, if you wish, in the interstitium beside it. "
            "Under the chart, the change is split into what is mass and what is water.")
-
-segs, solutes = options()
-
-c1, c2, c3, c4 = st.columns([1, 1, 1, 1.2])
-solute      = nav.select(c1, "Solute", solutes, "solute", fallback="Na")
-segment     = nav.select(c2, "Segment", segs, "segment", fallback="PT")
-nephron_req = nav.select(c3, "Nephron", NEPHRONS, "nephron", fallback="sup")
-show_bath   = c4.checkbox("Overlay Bath", value=True)
-nephron     = neph_for(segment, nephron_req)
+show_bath = st.checkbox("Show the interstitium beside the tubular fluid", value=True)
 
 if nephron != nephron_req:
-    st.info(f"`{segment}` is a collecting-duct segment → nephron automatically **merged**.")
+    st.info(f"The {segment} belongs to the collecting duct, which all nephrons share: there is one of it, "
+            f"whatever nephron is selected.")
 
 comps = ["Lumen", "Bath"] if show_bath else ["Lumen"]
 df = q(
@@ -50,8 +46,8 @@ if df.empty:
                    f"(Collecting-duct solver error; pick a clean scenario for this segment. "
                    f"Details: Data Integrity page.)")
     else:
-        st.warning(f"No data: segment `{segment}` does not exist in nephron `{nephron}` "
-                   f"(LDL/LAL only exist in jux nephrons).")
+        st.warning(f"No data: the {segment} does not exist in {nephron_phrase(nephron)} "
+                   f"(the thin limbs, LDL and LAL, exist only in juxtamedullary nephrons).")
 else:
     if dropped:
         st.warning(f"{dropped} invalid point(s) (convergence error) hidden; "
@@ -60,18 +56,20 @@ else:
     if not lumen.empty:
         g, c = lumen["value"].iloc[0], lumen["value"].iloc[-1]
         m1, m2, m3 = st.columns(3)
-        m1.metric(f"{solute} inlet", f"{g:.2f} mM")
-        m2.metric(f"{solute} outlet", f"{c:.2f} mM", f"{(c-g)/g*100:+.1f} %" if g else None)
+        m1.metric(f"{name} inlet", f"{g:.2f} mM")
+        m2.metric(f"{name} outlet", f"{c:.2f} mM", f"{(c-g)/g*100:+.1f} %" if g else None)
         low, high = lumen["value"].min(), lumen["value"].max()
         m3.metric("Range along the segment", f"{low:.2f} – {high:.2f}")
 
-    fig = make_chart(df, "position", "value", "compartment",
-                     f"{segment} — {solute} ({nephron})",
+    drawn = df.assign(series=df["compartment"].map(SERIES_WORD).fillna(df["compartment"]))
+    fig = make_chart(drawn, "position", "value", "series",
+                     f"{segment} — {name}",
                      "Intra-segment position (0 = inlet, 1 = outlet)",
-                     f"{solute} (mM)", color_label="Compartment")
+                     f"{name} (mM)", color_label="Compartment",
+                     category_orders={"series": [SERIES_WORD["Lumen"], SERIES_WORD["Bath"]]})
     where = "the tubular fluid and the interstitium beside it" if df["compartment"].nunique() > 1 \
         else "the tubular fluid"
-    figure(fig, caption=f"{solute} along the {segment} of {nephron_phrase(nephron)}, in {where}; "
+    figure(fig, caption=f"{name} along the {segment} of {nephron_phrase(nephron)}, in {where}; "
                         f"{SCENARIO_LABEL.get(scenario, scenario)}")
 
     # Automatic physiological interpretation
@@ -117,8 +115,8 @@ else:
             st.caption(f"Source: {cite_short(seg.get('source_key','turkmen2024'), page)}")
 
     with st.expander("Download CSV and summary table"):
-        summary_tbl = df.groupby("compartment")["value"].agg(["min", "max", "mean"]).round(3)
-        style.table(summary_tbl, index=True)
+        summary_tbl = drawn.groupby("series")["value"].agg(["min", "max", "mean"]).round(3)
+        style.table(summary_tbl.rename_axis("compartment"), index=True)
         st.download_button("Download CSV", df.to_csv(index=False).encode("utf-8"),
                            file_name=f"{scenario}_{segment}_{solute}_{nephron}.csv",
                            mime="text/csv")

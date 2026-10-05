@@ -7,10 +7,11 @@ import nav
 import nephron_figure
 import style
 from ui_kit import (
-    q, DB, SCENARIO_LABEL, loop_depths, neph_for, scalar, segment_broken, segment_names,
+    q, DB, SCENARIO_LABEL, loop_depths, neph_for, nephron_word, scalar, scenario_list, scenario_word,
+    segment_broken, segment_names, selection_note,
 )
 
-scenario = nav.get("scenario")
+scenario = nav.shown("scenario", scenario_list(), nav.DEFAULTS["scenario"])
 
 
 # ============================================================
@@ -155,7 +156,8 @@ def _reading(scenario, segment, values, profiles):
     st.markdown(
         f"<div class='nd-reading {nav.changed('home_reading', (scenario, segment, shown))}'>"
         f"<span class='nd-label'>Selected on the figure</span>"
-        f"<b>{segment}</b><i>{name}</i><span class='nd-side-meta'>{shown} nephron</span></div>"
+        f"<b>{segment}</b><i>{name}</i><span class='nd-side-meta'>"
+        f"{'collecting duct' if shown == 'merged' else nephron_word(shown) + ' nephron'}</span></div>"
         + nephron_figure.pin(segment),
         unsafe_allow_html=True,
     )
@@ -172,7 +174,7 @@ def _reading(scenario, segment, values, profiles):
                 [scenario, segment, shown],
             )
             if df.empty:
-                style.pending(f"No profile for {segment} in the {shown} nephron.")
+                style.pending(f"No profile for {segment} in the {nephron_word(shown)} nephron.")
             else:
                 df["series"] = df["series"].map({"Lumen": "tubular fluid", "Bath": "interstitium"})
                 st.plotly_chart(
@@ -244,6 +246,12 @@ with text:
         "17 transporters, with their fluxes</div>",
         unsafe_allow_html=True,
     )
+    # The scenario is chosen here, beside the figure it changes (on the other pages it is the
+    # first field of the selection row).
+    nav.select(st, "The figure shows", scenario_list(), "scenario", fallback=nav.DEFAULTS["scenario"],
+               format_func=scenario_word,
+               help="Every chart and number is read from this scenario. It stays selected as you change pages.")
+    st.markdown(selection_note(scenario), unsafe_allow_html=True)
 
 with figure:
     values = _plate_values(scenario)
@@ -375,7 +383,7 @@ gives the exact command behind every scenario.
 """)
 with right:
     style.note(
-        "The panel on the left holds what is selected: the scenario, and the solute, segment, "
+        "The row under the masthead holds what is selected: the scenario, and the solute, segment, "
         "nephron and compartment you last chose on any page. It stays with you: the next page opens "
         "on it, and the address of the page carries it, so a copied address opens the same view. "
         "A clinical case opens the model pages on its own scenarios, and a scenario links back to "

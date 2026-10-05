@@ -11,35 +11,32 @@ import nav
 import style
 import transport as T
 from ui_kit import (
-    figure, make_chart, neph_for, options, scenario_list,
-    NEPHRONS, SCENARIO_COLOR, SCENARIO_LABEL, segment_broken, nephron_phrase,
+    figure, make_chart, neph_for, options, scenario_list, selection, scenario_word,
+    NEPHRON_TYPES, SCENARIO_COLOR, SCENARIO_LABEL, segment_broken, nephron_phrase,
 )
 
-scenario = nav.get("scenario")
+# ------------------------------------------------------------
+#  Selection (the solutes offered are those a flux moves in the chosen segment)
+# ------------------------------------------------------------
+all_segments, _ = options()
+with_flux = set(T.flux_segments())
+segments = [s for s in all_segments if s in with_flux]
+chosen = selection(segment=segments, solute=lambda so_far: T.flux_solutes(so_far["segment"]),
+                   nephron=NEPHRON_TYPES)
+scenario, solute, segment, nephron_req = (chosen[name] for name in ("scenario", "solute", "segment", "nephron"))
+nephron = neph_for(segment, nephron_req)
 
 st.markdown("## Transporters")
 st.caption("What crosses the epithelium in each segment, as the model computes it: the totals for "
            "Na⁺ and K⁺ across the apical membrane and through the tight junction, and the flux through "
            "each transporter. This is model output shown as it is; nothing is interpreted.")
 
-# ------------------------------------------------------------
-#  Selection (bound to the shared context)
-# ------------------------------------------------------------
-all_segments, _ = options()
-with_flux = set(T.flux_segments())
-segments = [s for s in all_segments if s in with_flux]
-
-c1, c2, c3 = st.columns(3)
-segment = nav.select(c1, "Segment", segments, "segment", fallback="PT")
-solute = nav.select(c2, "Solute", T.flux_solutes(segment), "solute", fallback="Na")
-nephron_req = nav.select(c3, "Nephron", NEPHRONS, "nephron", fallback="sup")
-nephron = neph_for(segment, nephron_req)
-
 if nav.get("solute") != solute:
-    st.info(f"No exported flux moves `{nav.get('solute')}` in `{segment}`, so `{solute}` is shown here. "
+    st.info(f"No exported flux moves {nav.get('solute')} in the {segment}, so {solute} is shown here. "
             f"Your selection is unchanged on the other pages.")
 if nephron != nephron_req:
-    st.info(f"`{segment}` is a collecting-duct segment → nephron automatically **merged**.")
+    st.info(f"The {segment} belongs to the collecting duct, which all nephrons share: there is one of it, "
+            f"whatever nephron is selected.")
 
 integrable = segment in T.INTEGRABLE
 y_label = f"{solute} flux ({T.FLUX_UNIT_LABEL})"
@@ -66,11 +63,11 @@ with tab_one:
         df = T.profiles(scenario, segment, nephron, solute)
         df = df[df["value"].notna()]
         if df.empty:
-            st.warning(f"No flux data for `{solute}` in `{segment}` of nephron `{nephron}` "
-                       f"(LDL/LAL only exist in jux nephrons).")
+            st.warning(f"No flux data for {solute} in the {segment} of {nephron_phrase(nephron)} "
+                       f"(the thin limbs, LDL and LAL, exist only in juxtamedullary nephrons).")
         else:
             fig = make_chart(df, "position", "density", "pathway",
-                             f"{segment} — {solute} fluxes ({nephron}) · {SCENARIO_LABEL.get(scenario, scenario)}",
+                             f"{segment} — {solute} fluxes · {SCENARIO_LABEL.get(scenario, scenario)}",
                              x_label, y_label, color_label="Pathway", height=520, legend_below=True)
             fig.add_hline(y=0, line_dash="dot", opacity=0.35)
             figure(fig, caption=f"What carries {solute} across the epithelium of the {segment} "
@@ -121,7 +118,8 @@ with tab_many:
         names = ", ".join(SCENARIO_LABEL.get(s, s) for s in broken)
         st.warning(f"**{names}** did not converge in `{segment}` and is left out.")
 
-    frames = [T.profiles(s, segment, nephron, solute).assign(scenario=s) for s in usable]
+    # in the figure and the table a scenario goes by its name, not by its code
+    frames = [T.profiles(s, segment, nephron, solute).assign(scenario=scenario_word(s)) for s in usable]
     frames = [f for f in frames if not f.empty]
     if not frames:
         st.warning("No flux data for the selected combination.")
@@ -137,9 +135,10 @@ with tab_many:
         one = everything[everything["pathway"] == pathway]
 
         fig = make_chart(one, "position", "density", "scenario",
-                         f"{segment} — {pathway} — {solute} ({nephron})",
+                         f"{segment} — {pathway} — {solute}",
                          x_label, y_label, color_label="Scenario", height=480,
-                         color_map=SCENARIO_COLOR)
+                         color_map={scenario_word(code): colour for code, colour in SCENARIO_COLOR.items()},
+                         legend_below=True)
         fig.add_hline(y=0, line_dash="dot", opacity=0.35)
         figure(fig, caption=f"{pathway} in the {segment} ({nephron_phrase(nephron)}), {solute}, "
                             f"one line per scenario",
@@ -148,9 +147,9 @@ with tab_many:
         table = summary_table(one, "scenario")
         if integrable:
             totals = {}
-            for s in table.index:
+            for s in usable:
                 per_pathway = T.segment_totals(s, segment, nephron, solute).set_index("pathway")["total"]
-                totals[s] = per_pathway.get(pathway, float("nan"))
+                totals[scenario_word(s)] = per_pathway.get(pathway, float("nan"))
             table["whole segment (pmol/min)"] = pd.Series(totals).round(1)
             reference = table.index[0]
             base = table.loc[reference, "whole segment (pmol/min)"]

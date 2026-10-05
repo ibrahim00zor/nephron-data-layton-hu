@@ -24,6 +24,11 @@ def open_with(**params):
     return at
 
 
+def scenario_field(at):
+    """The field the scenario is chosen in (on the Home page it stands beside the figure)."""
+    return next(box for box in at.main.selectbox if box.label.startswith(("Scenario", "The figure shows")))
+
+
 def selection(at):
     return {name: at.session_state[f"ctx_{name}"] for name in nav.URL_FIELDS
             if f"ctx_{name}" in at.session_state}
@@ -36,7 +41,7 @@ def test_a_link_opens_its_selection():
     assert got["scenario"] == "F_SGLT2" and got["solute"] == "urea"
     assert got["segment"] == "LDL" and got["nephron"] == "jux3"
     assert got["compare"] == ["F_normal", "M_normal"] and got["case"] == "Hypertension"
-    assert at.sidebar.selectbox[0].value == "F_SGLT2"
+    assert scenario_field(at).value == "F_SGLT2"
 
 
 def test_values_that_do_not_exist_are_ignored():
@@ -55,14 +60,16 @@ def test_values_that_do_not_exist_are_ignored():
 def test_the_address_follows_the_selection():
     at = open_with()
     assert dict(at.query_params) == {}           # defaults are not written
-    at.sidebar.selectbox[0].select("F_HT").run()
+    scenario_field(at).select("F_HT").run()
     assert not at.exception
     assert at.query_params["scenario"] == ["F_HT"] or at.query_params["scenario"] == "F_HT"
 
 
-def test_the_sidebar_map_links_every_segment():
+def test_the_small_map_links_every_segment():
     at = open_with(segment="mTAL")
-    html = " ".join(m.value for m in at.sidebar.markdown)
+    at.switch_page(nav.path("segment")).run()        # the map closes the selection row of a model page
+    assert not at.exception, [str(e.value) for e in at.exception]
+    html = next(m.value for m in at.main.markdown if "class='nd-where'" in m.value)
     links = re.findall(r"<a class='nd-go' href='([^']*)'", html)
     assert len(links) == 12, links                # ten segments and the two thin limbs
     assert any("segment=cTAL" in link for link in links)

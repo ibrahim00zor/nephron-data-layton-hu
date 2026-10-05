@@ -5,7 +5,7 @@ One hand-placed geometry (a superficial nephron and the collecting duct it drain
 with the long loops of the juxtamedullary nephrons drawn in hairline below it) gives:
 
 - plate(...)   : the figure on the Home page, tinted and labelled with model output;
-- locator(...) : a small map for the sidebar that marks the selected segment;
+- locator(...) : a small map that marks the selected segment (it closes the selection row);
 - mark(...)    : the logo and the favicon.
 
 Everything is plain SVG built as a string. How the drawings look under the pointer is CSS
@@ -170,7 +170,7 @@ def _styles():
 .nd-plate .nd-mark {{ opacity: 0; transition: opacity .18s ease-out; pointer-events: none; }}
 .nd-plate [data-seg]:hover .nd-code {{ fill: {ACCENT}; }}
 /* What is under the pointer is named on the drawing by events.py (data-hot), and on the
-   small map in the sidebar. While something is pointed at, the rest of the tubule steps back. */
+   small map of the selection row. While something is pointed at, the rest of the tubule steps back. */
 .nd-plate svg[data-hot] [data-part] {{ opacity: 0.28; }}
 .nd-plate .nd-ghost {{ transition: opacity .18s ease-out; }}
 .nd-plate svg[data-hot] .nd-ghost {{ opacity: 0.08; }}
@@ -356,7 +356,7 @@ def plate(values, unit="mOsm", links=None, loops=None, animate=True):
     out.append(_hatch())
     out.append(f"<clipPath id='nd-t-open'><rect x='{x0}' y='{y0}' width='{w}' height='{PAPILLA - y0}'/></clipPath>")
     # the tooth of the paper, and the path of each segment as the firm pass draws it
-    out.append(tooth(PAPER))
+    out.append(tooth(PAPER, cover=0.62))
     out += [f"<path id='nd-p-{code}' d='{_firm(code)}'/>" for code in SEGMENTS]
     out.append("</defs>")
 
@@ -518,7 +518,7 @@ def cards(entries):
 
 
 # ============================================================
-#  The locator (sidebar, and wherever a small nephron helps)
+#  The locator (the selection row, and wherever a small nephron helps)
 # ============================================================
 def locator(segment=None, width=58, links=None, names=None, struck=(), depth=1.0, long_loop=False):
     """A small map of the nephron.

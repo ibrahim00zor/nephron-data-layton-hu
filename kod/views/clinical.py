@@ -17,7 +17,7 @@ import plotly.express as px
 import nav
 import style
 from clinical_cases import CASES, REFERENCE_COLOR
-from ui_kit import q, DB, figure, references_box
+from ui_kit import q, DB, figure, references_box, scenario_word
 
 # ================================================================
 # HEADING
@@ -150,7 +150,8 @@ if case_key == "SGLT2":
                    f"{_percent(con_s, con_n):+.0f}%", delta_color="off")
         k3.metric("PT glucose outlet", f"{glu_s:.1f} mM",
                    f"{glu_s - glu_n:+.1f} mM", delta_color="off")
-        st.caption("Metrics give the difference of `F_SGLT2` relative to `F_normal`.")
+        st.caption(f"Metrics give the difference of {scenario_word('F_SGLT2')} relative to "
+                   f"{scenario_word('F_normal')}.")
 
     # --- 4 Tabs ---
     t_model, t_mech, t_drug, t_ref = st.tabs(
@@ -215,7 +216,8 @@ elif case_key == "Hyperfiltration":
                    f"{_percent(qg_d, qg_n):+.0f}%", delta_color="off")
         k2.metric("Na reabsorbed in PT (mass)", f"{reab_d:,.0f} pmol/min",
                    f"{_percent(reab_d, reab_n):+.0f}%", delta_color="off")
-        st.caption("Metrics give the difference of `F_diab_mod` relative to `F_normal`.")
+        st.caption(f"Metrics give the difference of {scenario_word('F_diab_mod')} relative to "
+                   f"{scenario_word('F_normal')}.")
 
     # --- 4 Tabs ---
     t_model, t_mech, t_drug, t_ref = st.tabs(
@@ -276,7 +278,8 @@ elif case_key == "Hypertension":
                    f"{_percent(fout_h, fout_n):+.0f}%", delta_color="off")
         k2.metric("mTAL outlet Na conc.", f"{cout_h:.0f} mM",
                    f"{cout_h - cout_n:+.0f} mM", delta_color="off")
-        st.caption("Metrics give the difference of `F_HT` relative to `F_normal`.")
+        st.caption(f"Metrics give the difference of {scenario_word('F_HT')} relative to "
+                   f"{scenario_word('F_normal')}.")
 
     # --- 4 Tabs ---
     t_model, t_mech, t_drug, t_ref = st.tabs(

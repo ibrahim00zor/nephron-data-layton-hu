@@ -45,6 +45,27 @@ is developed on; frame times are medians.
 - Tools: `tools/webkit_drive.swift` points at a page, clicks it and times its frames in
   WebKit; `tools/webkit_shot.swift` now photographs a page that is running.
 
+### One selection, in one place and in the reader's words (2026-10-05)
+
+- **The selection is one row under the masthead**, the same on every page of the model world:
+  *Scenario · Solute · Segment · Nephron · Compartment*, always in this order and under these
+  names (`ui_kit.selection`). Before, the scenario was in a side panel and the other four were
+  on the page, in an order that changed from page to page. A field a page does not use is
+  still shown, with what is kept in it, but cannot be changed there. Under the row, one quiet
+  line says what the scenario is, what did not converge in it, and links to its clinical case
+  and back to the default selection. The side panel is gone; the small map of the nephron
+  closes the row.
+- **Figures speak in the reader's words.** Legends, tables and notes named scenarios, nephron
+  types and compartments by their codes in the dataset (`F_diab_mod`, `jux3`, `Bath`); they
+  now say "♀ + Diabetes (moderate)", "juxtamedullary 3", "interstitium". The codes stay where
+  they belong: in the data, in the address of a page, in what is downloaded, and on the pages
+  about the data. The Nephron field no longer offers "merged": the collecting duct is shared
+  by all nephrons and is read from it without being asked.
+- **Interactive Anatomy.** The long loop turns in a hairpin: the thin limbs met in a corner at
+  its tip. The pencil is back in the drawing (a line two units thick with a coarser tooth);
+  the ground is washed in over the pencil and under the colour, so the tooth shows the ground
+  and the colour of a segment is not tinted by it.
+
 ### Corrected
 
 - **Primary citation.** The model paper was cited with iScience article number 102694 and

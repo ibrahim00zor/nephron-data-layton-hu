@@ -74,8 +74,42 @@ def test_every_page_renders_through_the_router():
     for key, spec in nav.PAGES.items():
         ok(at.switch_page(spec["path"]).run())
         assert page(at) == key, (key, page(at))                 # the router recognised the page
-        assert len(at.sidebar.selectbox) == 1, key              # ... and rendered the sidebar
+        assert any("<div class='nd-masthead'>" in m.value for m in at.main.markdown), key   # ... and drew the frame
+        assert not at.sidebar.selectbox and not at.sidebar.markdown, key     # nothing lives in a side panel
         assert not at.error, f"{key}: {[e.value for e in at.error]}"
+
+
+def test_the_selection_is_one_row_in_one_order():
+    # every page of the model world shows the same five fields, in the same order and under the
+    # same names; a field a page does not use is shown, but cannot be changed there
+    for key in nav.in_section(nav.MODEL):
+        at = new_app(key)
+        labels = [box.label for box in at.main.selectbox][:5]
+        assert labels == ["Scenario", "Solute", "Segment", "Nephron", "Compartment"], (key, labels)
+    at = new_app("nephron")
+    assert main_select(at, "Segment").disabled and not main_select(at, "Solute").disabled
+    at = new_app("comparison")
+    assert main_select(at, "Scenario").disabled                  # it sets several scenarios side by side
+    # a reader chooses between nephron types; "merged" is read for the collecting duct without asking
+    at = new_app("segment")
+    assert "merged" not in main_select(at, "Nephron").options
+    assert main_select(at, "Nephron").options[0] == "Superficial"
+    assert "Interstitium" in main_select(at, "Compartment").options or main_select(at, "Compartment").disabled
+
+
+def test_figures_speak_in_the_readers_words():
+    at = new_app("comparison")
+    text = " ".join(m.value for m in at.main.markdown)
+    assert "<td class='key'>♀ Healthy female (baseline)</td>" in text      # the table of differences
+    assert "<td class='key'>F_normal</td>" not in text
+    names = {trace["name"] for chart in at.main.get("plotly_chart") for trace in __import__("json").loads(chart.proto.spec)["data"]}
+    assert "♀ Healthy female (baseline)" in names and not names & {"F_normal", "F_diab_mod", "F_SGLT2"}
+    at = new_app("segment")
+    names = {trace["name"] for chart in at.main.get("plotly_chart") for trace in __import__("json").loads(chart.proto.spec)["data"]}
+    assert names == {"tubular fluid", "interstitium"}, names
+    at = new_app("types")
+    names = {trace["name"] for chart in at.main.get("plotly_chart") for trace in __import__("json").loads(chart.proto.spec)["data"]}
+    assert "superficial" in names and "juxtamedullary 5" in names and "jux5" not in names
 
 
 def test_page_files_are_not_in_a_pages_folder():
@@ -91,8 +125,7 @@ def test_selection_travels_between_pages():
     main_select(at, "Solute").select("urea").run()
     main_select(at, "Segment").select("mTAL").run()
     main_select(at, "Nephron").select("jux3").run()
-    shown = re.sub(r"<[^>]+>", "", " ".join(m.value for m in at.sidebar.markdown))
-    assert "urea · mTAL · jux3" in shown
+    assert [at.session_state[f"ctx_{name}"] for name in ("solute", "segment", "nephron")] == ["urea", "mTAL", "jux3"]
 
     ok(at.switch_page(nav.path("comparison")).run())
     assert main_select(at, "Solute").value == "urea"
@@ -105,7 +138,7 @@ def test_selection_travels_between_pages():
     assert "carries over to the other pages" in captions(at)
 
     ok(at.switch_page(nav.path("anatomy")).run())
-    assert main_select(at, "Selected segment").value == "mTAL"
+    assert main_select(at, "Segment").value == "mTAL"
 
 
 def test_restricted_page_does_not_overwrite_selection():
@@ -115,18 +148,25 @@ def test_restricted_page_does_not_overwrite_selection():
     # Nephron Types excludes collecting-duct segments: it shows a fallback and says so ...
     ok(at.switch_page(nav.path("types")).run())
     assert main_select(at, "Segment").value == "PT"
-    assert any("collecting-duct segment" in i.value for i in at.info)
+    assert any("belongs to the collecting duct" in i.value for i in at.info)
     # ... but the selection itself is untouched, so other pages still open on CCD.
     assert at.session_state["ctx_segment"] == "CCD"
     ok(at.switch_page(nav.path("segment")).run())
     assert main_select(at, "Segment").value == "CCD"
 
 
+def _note(at):
+    return next(m.value for m in at.main.markdown if "<div class='nd-selection-note'>" in m.value)
+
+
 def test_reset_selection():
-    at = new_app("segment", solute="urea", segment="mTAL")
-    ok(at.button(key="_sidebar_reset").click().run())
-    assert main_select(at, "Solute").value == "Na" and main_select(at, "Segment").value == "PT"
-    assert not [b for b in at.sidebar.button if b.key == "_sidebar_reset"]   # nothing left to reset
+    # the way back to the default selection is a link under the row: the address of this page
+    # with nothing in it but what is not being reset (an address resets what it leaves out)
+    at = new_app("segment", solute="urea", segment="mTAL", scenario="F_HT")
+    link = re.search(r"<a class='nd-go' href='([^']*)' target='_self'>Reset the selection</a>", _note(at))
+    assert link and link.group(1) == "segment_profile?scenario=F_HT", link
+    at = new_app("segment")
+    assert "Reset the selection" not in _note(at)                # nothing to reset
 
 
 def test_home_question_opens_comparison_and_back_returns_home():
@@ -151,12 +191,14 @@ def test_back_link_disappears_once_the_user_moves_on():
 
 
 def test_scenario_links_to_its_clinical_case():
-    at = new_app()
-    assert not [b for b in at.sidebar.button if b.key == "_sidebar_case"]   # F_normal has no case
-    at.sidebar.selectbox[0].select("F_HT").run()
-    at = jump(at, "_sidebar_case")
-    assert page(at) == "clinical"
-    assert at.session_state["ctx_case"] == "Hypertension"
+    at = new_app("segment")
+    assert "Clinical case" not in _note(at)                      # F_normal has no case
+    main_select(at, "Scenario").select("F_HT").run()
+    link = re.search(r"<a class='nd-go' href='([^']*)' target='_self'>Clinical case: [^<]* →</a>", _note(at))
+    assert link and link.group(1).startswith("clinical?") and "case=Hypertension" in link.group(1), link
+    # following it (events.py hands the address to nav.follow) opens that case
+    at.session_state["ctx_case"] = "Hypertension"
+    ok(at.switch_page(nav.path("clinical")).run())
     assert any(CASES["Hypertension"]["title"] in m.value for m in at.main.markdown)
 
 
@@ -175,13 +217,13 @@ def test_clinical_case_round_trip_into_model_world():
 
     at = jump(at, "case_SGLT2_seg")
     assert page(at) == "segment"
-    assert at.sidebar.selectbox[0].value == "F_SGLT2"
+    assert main_select(at, "Scenario").value == "F_SGLT2"
     assert main_select(at, "Segment").value == "cTAL"
 
     at = jump(at, "_nav_back")
     at = jump(at, "case_SGLT2_ana")
     assert page(at) == "anatomy"
-    assert main_select(at, "Selected segment").value == "cTAL"
+    assert main_select(at, "Segment").value == "cTAL"
 
 
 def test_clinical_model_numbers_unchanged():

@@ -45,12 +45,14 @@ REACH = 34                            # width of the area around a segment that 
 
 # code -> (points of its line, width when there is no flow to size it by), in the order of
 # the flow. This is a juxtamedullary nephron: the thin limbs reach into the inner medulla.
+# Of the two thin limbs only the straight parts are given here; the bend that joins them is
+# added in layout().
 _LONG = {
     "PT":   ([(120, 135), (140, 120), (170, 140), (200, 125), (230, 140), (255, 128), (275, 145)], 12),
     "S3":   ([(275, 145), (275, 175), (270, 210), (268, 250)], 10),
     "SDL":  ([(268, 250), (265, 310), (262, 380), (260, 440), (258, 510)], 5),
-    "LDL":  ([(258, 510), (256, 580), (255, 650), (256, 720), (260, 780), (270, 820), (285, 840)], 5),
-    "LAL":  ([(285, 840), (300, 830), (315, 810), (325, 770), (330, 720), (332, 650), (334, 580), (336, 510)], 6),
+    "LDL":  ([(258, 510), (256, 580), (255, 650), (256, 720), (258, 790), (258, 811)], 5),
+    "LAL":  ([(336, 811), (336, 790), (333, 720), (332, 650), (334, 580), (336, 510)], 6),
     "mTAL": ([(336, 510), (338, 440), (340, 380), (342, 310), (344, 250)], 10),
     "cTAL": ([(344, 250), (346, 210), (348, 175), (350, 145)], 10),
     "DCT":  ([(350, 145), (370, 125), (395, 140), (418, 120), (440, 140)], 9),
@@ -60,7 +62,7 @@ _LONG = {
     "IMCD": ([(488, 510), (490, 600), (492, 700), (494, 790), (495, 870)], 12),
 }
 SEGMENTS = list(_LONG)
-_BEND = 39                            # half the distance between the limbs of the short loop
+_BEND = 39                            # half the distance between the two limbs of a loop
 
 # code -> where its name is written: x, y, text-anchor
 LABELS = {
@@ -80,7 +82,16 @@ def layout(long_loop):
     """The tubule of a nephron with a long loop, or with a short one:
     {code: {"firm", "loose", "ends", "width", "length"}}, in the order of the flow."""
     lines = {code: (through(points), points[0], points[-1], width) for code, (points, width) in _LONG.items()}
-    if not long_loop:
+    if long_loop:
+        # The loop of Henle turns in a hairpin: one smooth bend, not a corner. The descending
+        # limb takes the first half of it and the ascending limb the second, so the two
+        # segments of the model meet at the tip of the loop.
+        down, up = _LONG["LDL"][0], _LONG["LAL"][0]
+        tip = (297, 811 + _BEND)
+        lines["LDL"] = (through(down) + f" A{_BEND},{_BEND} 0 0 0 {tip[0]},{tip[1]}", down[0], tip, 5)
+        lines["LAL"] = (f"M{tip[0]},{tip[1]} A{_BEND},{_BEND} 0 0 0 336,811 " + through(up).split(" ", 1)[1],
+                        tip, up[-1], 6)
+    else:
         del lines["LDL"], lines["LAL"]
         short = [(268, 250), (265, 310), (262, 380), (260, 440), (259, 471)]
         lines["SDL"] = (through(short), short[0], short[-1], 5)
@@ -189,8 +200,9 @@ def pin(code, width):
 #  The figure
 # ============================================================
 def wall(width):
-    """Width of the outline of a tube whose lumen is `width` wide."""
-    return width + 2.6
+    """Width of the outline of a tube whose lumen is `width` wide: a pencil line of two
+    units on either side of it."""
+    return width + 4.0
 
 
 def figure(shown, values, low, high, ramp, title, unit, flow, flow_low, flow_high, interstitium,
@@ -220,7 +232,8 @@ def figure(shown, values, low, high, ramp, title, unit, flow, flow_low, flow_hig
 
     # ---- definitions
     out.append("<defs>")
-    out.append(tooth(PAPER, name="na-tooth", units=44, pixels=84))
+    # the tooth is coarse here: the line is thick enough to be broken up by it, as charcoal is
+    out.append(tooth(PAPER, name="na-tooth", units=44, pixels=84, cover=0.6, cell=3))
     for code in shown:
         (x1, y1), (x2, y2) = lines[code]["ends"]
         if code in values:
@@ -253,8 +266,6 @@ def figure(shown, values, low, high, ramp, title, unit, flow, flow_low, flow_hig
 
     # ---- the ground: the interstitium the model is given, and the three zones
     zone = f"{italic} font-size='12.5' fill='{MUTED}'"
-    if len(interstitium) >= 2:
-        out.append(f"<rect x='0' y='0' width='{SHEET}' height='{H}' fill='url(#na-ground)' opacity='0.2'/>")
     for y in (CORTEX_END, OUTER_END):
         out.append(f"<path d='{LOOSE.line(0, y, SHEET, y + 1.5, 16.0)}' fill='none' stroke='{GRAPHITE}' "
                    f"stroke-width='0.8' opacity='0.4'/>")
@@ -270,13 +281,10 @@ def figure(shown, values, low, high, ramp, title, unit, flow, flow_low, flow_hig
                    f"<text x='{bar_x - 5}' y='{bar_y + 8}' text-anchor='end' {tick}>{osm_low:.0f}</text>"
                    f"<text x='{bar_x - 5}' y='{bar_y + bar_h}' text-anchor='end' {tick}>{osm_high:.0f}</text>")
 
-    # ---- tubuloglomerular feedback: from the macula densa back to the afferent arteriole
-    out.append(f"<path d='M348,150 C300,250 150,250 74,128' fill='none' stroke='{ACCENT}' stroke-width='1' "
-               f"stroke-dasharray='5 4' opacity='0.45' marker-end='url(#na-arrow)'/>"
-               f"<text x='205' y='236' text-anchor='middle' {italic} font-size='11' fill='{ACCENT}'>TGF →</text>")
-
     # ---- the tubule: the looser pass, the firm outline with the tooth of the paper over it,
-    # the colour inside, and the flow
+    # the colour inside, and the flow. The ground is washed in over the pencil and under the
+    # colour: where the tooth shows through a line it shows the ground, and the colour of a
+    # segment is not tinted by it.
     line = "fill='none' stroke-linecap='round' stroke-linejoin='round'"
     out.append("<g opacity='0.3'>" + "".join(
         f"<path d='{lines[code]['loose']}' class='na-under' data-part='{code}' {line} stroke='{GRAPHITE}' "
@@ -287,7 +295,14 @@ def figure(shown, values, low, high, ramp, title, unit, flow, flow_low, flow_hig
         out.append(f"<use href='#na-p-{code}' class='nd-wall' data-part='{code}' {line} stroke='{GRAPHITE}' "
                    f"stroke-width='{wall(widths[code]):.2f}'{broken}/>")
     out.append("".join(f"<use href='#na-p-{code}' {line} stroke='url(#na-tooth)' "
-                       f"stroke-width='{wall(widths[code]) + 1:.2f}'/>" for code in shown))
+                       f"stroke-width='{wall(widths[code]):.2f}'/>" for code in shown))
+    if len(interstitium) >= 2:
+        out.append(f"<rect x='0' y='0' width='{SHEET}' height='{H}' fill='url(#na-ground)' opacity='0.2' "
+                   f"pointer-events='none'/>")
+    # tubuloglomerular feedback: from the macula densa back to the afferent arteriole
+    out.append(f"<path d='M348,150 C300,250 150,250 74,128' fill='none' stroke='{ACCENT}' stroke-width='1' "
+               f"stroke-dasharray='5 4' opacity='0.45' marker-end='url(#na-arrow)'/>"
+               f"<text x='205' y='236' text-anchor='middle' {italic} font-size='11' fill='{ACCENT}'>TGF →</text>")
     for code in shown:
         out.append(f"<use href='#na-p-{code}' class='na-tube' data-part='{code}' {line} "
                    f"stroke='url(#na-c-{code})' stroke-width='{widths[code]:.2f}'/>")

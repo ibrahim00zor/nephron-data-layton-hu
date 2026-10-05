@@ -133,6 +133,16 @@ def _wkey(name):
     return f"_w_{current_page()}_{name}"
 
 
+def shown(name, options, fallback=None):
+    """What a page shows for a field: the selection, if the page offers it; otherwise the
+    fallback (and the selection itself is left as it is)."""
+    options = list(options)
+    current = get(name)
+    if current in options:
+        return current
+    return fallback if fallback in options else options[0]
+
+
 def select(container, label, options, name, fallback=None, **kwargs):
     """Selectbox bound to context field `name`.
 
@@ -142,15 +152,8 @@ def select(container, label, options, name, fallback=None, **kwargs):
     only when the user picks something.
     """
     options = list(options)
-    current = get(name)
-    if current in options:
-        shown = current
-    elif fallback in options:
-        shown = fallback
-    else:
-        shown = options[0]
     wkey = _wkey(name)
-    st.session_state[wkey] = shown
+    st.session_state[wkey] = shown(name, options, fallback)
     return container.selectbox(label, options, key=wkey, on_change=_push, args=(name, wkey), **kwargs)
 
 
@@ -393,8 +396,9 @@ def selection_summary():
     return " · ".join(str(get(name)) for name in SELECTION)
 
 
-def render_explore_bar():
-    """Footer on model-world pages: the same selection, continued on another page."""
+def render_explore_bar(summary=None):
+    """Footer on model-world pages: the same selection, continued on another page.
+    `summary` is the selection in the reader's words (the codes are used if it is not given)."""
     page = current_page()
     if PAGES.get(page, {}).get("section") != MODEL:
         return
@@ -402,7 +406,7 @@ def render_explore_bar():
     if not others:
         return
     st.markdown("---")
-    st.caption(f"Your selection (**{selection_summary()}**) carries over to the other pages of the "
+    st.caption(f"Your selection (**{summary or selection_summary()}**) carries over to the other pages of the "
                f"{MODEL.lower()}. Continue in:")
     row = st.container(horizontal=True, gap="medium")
     for other in others:

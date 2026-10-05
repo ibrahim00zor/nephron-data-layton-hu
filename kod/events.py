@@ -12,9 +12,9 @@ One small script, mounted once per run by app.py, listens on the whole page:
   that is being left fade (data-leaving on <body>; the new page fades in by itself, see
   style.py).
 - Pointing at a part of a figure (an element with data-seg inside a .nd-plate) names that
-  part on every figure of the page and on the sidebar map (data-hot), and shows its card
+  part on every figure of the page and on the small map (data-hot), and shows its card
   beside the pointer (the .nd-card[data-for] with the same key).
-- Keys: "[" and "]" step along the nephron (the addresses are on the sidebar map), "?"
+- Keys: "[" and "]" step along the nephron (the addresses are on the small map), "?"
   shows the keys, Escape hides them.
 - The pilcrow beside a page title copies the address of the view.
 - The tooth of the paper is made here, once, as two small pictures (see `paper` below).

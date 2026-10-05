@@ -225,21 +225,35 @@ def _png(size, colour, alphas):
 
 
 @lru_cache(maxsize=None)
-def tooth(colour, name="nd-tooth", units=36, pixels=84, cover=0.5, seed=9):
+def tooth(colour, name="nd-tooth", units=36, pixels=84, cover=0.5, cell=2, seed=9):
     """A pattern (to go in <defs>) of specks in `colour`, the colour of the paper. A line
     stroked with it, over a pencil line, lets the paper show through unevenly.
 
     units:  the size of the tile in the units of the drawing;
     pixels: its size as a picture (about one pixel of the screen per pixel of the tile);
-    cover:  how strongly the specks cover (0 to 1): the weight of the tooth.
+    cover:  how strongly the specks cover (0 to 1): the weight of the tooth;
+    cell:   the size of the grain, in pixels of the tile (`pixels` must be a multiple of it).
+            A fine grain greys a line evenly; a coarse one breaks it up, as charcoal does.
     """
     rng = random.Random(seed)
-    coarse = [[rng.random() for _ in range(pixels // 2 + 1)] for _ in range(pixels // 2 + 1)]
+    n = pixels // cell
+    coarse = [[rng.random() for _ in range(n)] for _ in range(n)]
     alphas = []
     for y in range(pixels):
+        gy = y / cell
+        y0, fy = int(gy) % n, gy - int(gy)
+        fy = fy * fy * (3 - 2 * fy)
         for x in range(pixels):
-            # grain at two scales: the pixel, and a little larger
-            grain = 0.55 * coarse[(y // 2) % (pixels // 2)][(x // 2) % (pixels // 2)] + 0.45 * rng.random()
+            gx = x / cell
+            x0, fx = int(gx) % n, gx - int(gx)
+            fx = fx * fx * (3 - 2 * fx)
+            x1, y1 = (x0 + 1) % n, (y0 + 1) % n
+            top = coarse[y0][x0] + (coarse[y0][x1] - coarse[y0][x0]) * fx
+            low = coarse[y1][x0] + (coarse[y1][x1] - coarse[y1][x0]) * fx
+            # grain at two scales: the cell (blended, and stretched back to its full range)
+            # and the single pixel
+            blended = min(max(0.5 + (top + (low - top) * fy - 0.5) * 1.35, 0.0), 1.0)
+            grain = 0.6 * blended + 0.4 * rng.random()
             alphas.append(min(15, max(0, round(15 * cover * (grain - 0.36) / 0.64))))
     data = base64.b64encode(_png(pixels, colour, alphas)).decode("ascii")
     return (f"<pattern id='{name}' width='{units}' height='{units}' patternUnits='userSpaceOnUse'>"
