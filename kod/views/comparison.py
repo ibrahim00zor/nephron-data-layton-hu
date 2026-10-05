@@ -6,7 +6,7 @@ import plotly.express as px
 import nav
 import style
 from ui_kit import (
-    q, DB, cite_footer, neph_for,
+    q, DB, figure, neph_for, nephron_phrase,
     options, scenario_list, SCENARIO_COLOR, SCENARIO_LABEL, NEPHRONS, valid_data, segment_broken,
 )
 
@@ -24,8 +24,9 @@ solute = nav.select(c1, "Solute", ["Na", "K", "Cl", "urea", "glu", "HCO3", "NH3"
 segment = nav.select(c2, "Segment", segs, "segment", fallback="PT")
 compartment = nav.select(c3, "Compartment", ["Lumen", "Cell", "Bath"], "compartment", fallback="Lumen")
 
-nephron_req = nav.select(st, "Nephron type (auto 'merged' for CD segments)", NEPHRONS, "nephron",
-                         fallback="sup")
+nephron_req = nav.select(st, "Nephron", NEPHRONS, "nephron", fallback="sup",
+                         help="The collecting duct (CCD, OMCD, IMCD) is shared by all nephrons and is "
+                              "always read from the merged nephron.")
 nephron = neph_for(segment, nephron_req)
 
 # Multi-scenario selection
@@ -74,8 +75,8 @@ fig = px.line(
 fig.update_layout(hovermode="x unified", height=500,
                   legend=dict(title_text="SCENARIO"))
 fig.update_traces(line=dict(width=2), hovertemplate="%{y:.4g}")
-st.plotly_chart(fig, width='stretch')
-cite_footer()
+figure(fig, caption=f"{solute} along the {segment} of {nephron_phrase(nephron)} ({compartment.lower()}), "
+                    f"one line per scenario")
 
 # ============================================================
 #  Difference table — inlet/outlet per scenario and diff vs reference
@@ -88,7 +89,7 @@ summary = (df.groupby("condition")
                   min=("value", "min"),
                   max=("value", "max"))
              .round(2))
-summary["change_%"] = ((summary["outlet"] - summary["inlet"]) / summary["inlet"] * 100).round(1)
+summary["change along segment (%)"] = ((summary["outlet"] - summary["inlet"]) / summary["inlet"] * 100).round(1)
 
 # Let the user pick the reference scenario
 present = [s for s in selected if s in summary.index]
@@ -96,16 +97,16 @@ ref = st.selectbox("Reference scenario (differences are computed against it)",
                    present, format_func=lambda s: SCENARIO_LABEL.get(s, s))
 if ref in summary.index:
     ref_outlet = summary.loc[ref, "outlet"]
-    summary["vs_reference_%"] = ((summary["outlet"] - ref_outlet) / ref_outlet * 100).round(1)
+    summary["outlet vs reference (%)"] = ((summary["outlet"] - ref_outlet) / ref_outlet * 100).round(1)
 
 style.table(summary.rename_axis("scenario"), index=True)
 
 # Automatic observation
-if len(summary) >= 2 and "vs_reference_%" in summary.columns:
-    diffs = summary["vs_reference_%"].abs().sort_values(ascending=False)
+if len(summary) >= 2 and "outlet vs reference (%)" in summary.columns:
+    diffs = summary["outlet vs reference (%)"].abs().sort_values(ascending=False)
     biggest = diffs.index[0] if diffs.iloc[0] > 0 else None
     if biggest and biggest != ref:
-        ratio = summary.loc[biggest, "vs_reference_%"]
+        ratio = summary.loc[biggest, "outlet vs reference (%)"]
         st.info(
             f"Against `{ref}`, the scenario that differs most is `{biggest}` "
             f"({SCENARIO_LABEL.get(biggest, biggest)}): {solute} at the outlet of `{segment}` is "

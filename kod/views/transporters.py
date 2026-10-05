@@ -11,8 +11,8 @@ import nav
 import style
 import transport as T
 from ui_kit import (
-    cite_footer, make_chart, neph_for, options, scenario_list,
-    NEPHRONS, SCENARIO_COLOR, SCENARIO_LABEL, segment_broken,
+    figure, make_chart, neph_for, options, scenario_list,
+    NEPHRONS, SCENARIO_COLOR, SCENARIO_LABEL, segment_broken, nephron_phrase,
 )
 
 scenario = nav.get("scenario")
@@ -73,16 +73,17 @@ with tab_one:
                              f"{segment} — {solute} fluxes ({nephron}) · {SCENARIO_LABEL.get(scenario, scenario)}",
                              x_label, y_label, color_label="Pathway", height=520, legend_below=True)
             fig.add_hline(y=0, line_dash="dot", opacity=0.35)
-            st.plotly_chart(fig, width='stretch')
+            figure(fig, caption=f"What carries {solute} across the epithelium of the {segment} "
+                                f"({nephron_phrase(nephron)}), along the segment; "
+                                f"{SCENARIO_LABEL.get(scenario, scenario)}",
+                   note=f"Flux density in {T.FLUX_UNIT_LABEL} of luminal surface.")
 
             table = summary_table(df, "pathway")
             if integrable:
                 totals = T.segment_totals(scenario, segment, nephron, solute).set_index("pathway")["total"]
                 table["whole segment (pmol/min)"] = totals.reindex(table.index).round(1)
-            table = table.rename(columns={"inlet": f"inlet ({T.FLUX_UNIT_LABEL})",
-                                          "outlet": f"outlet ({T.FLUX_UNIT_LABEL})",
-                                          "mean": f"mean ({T.FLUX_UNIT_LABEL})"})
             style.table(table, index=True)
+            st.caption(f"Inlet, outlet and mean are flux densities, in {T.FLUX_UNIT_LABEL} of luminal surface.")
             if not integrable:
                 st.caption(f"No whole-segment total for `{segment}`: it is a coalescing tubule and its "
                            f"intercalated-cell pathways are not exported, so only the flux density is shown.")
@@ -140,7 +141,9 @@ with tab_many:
                          x_label, y_label, color_label="Scenario", height=480,
                          color_map=SCENARIO_COLOR)
         fig.add_hline(y=0, line_dash="dot", opacity=0.35)
-        st.plotly_chart(fig, width='stretch')
+        figure(fig, caption=f"{pathway} in the {segment} ({nephron_phrase(nephron)}), {solute}, "
+                            f"one line per scenario",
+               note=f"Flux density in {T.FLUX_UNIT_LABEL} of luminal surface.")
 
         table = summary_table(one, "scenario")
         if integrable:
@@ -153,12 +156,8 @@ with tab_many:
             base = table.loc[reference, "whole segment (pmol/min)"]
             if base:
                 table[f"vs {reference} (%)"] = ((table["whole segment (pmol/min)"] - base) / abs(base) * 100).round(1)
-        table = table.rename(columns={"inlet": f"inlet ({T.FLUX_UNIT_LABEL})",
-                                      "outlet": f"outlet ({T.FLUX_UNIT_LABEL})",
-                                      "mean": f"mean ({T.FLUX_UNIT_LABEL})"})
-        style.table(table, index=True)
-
-cite_footer()
+        style.table(table.rename_axis("scenario"), index=True)
+        st.caption(f"Inlet, outlet and mean are flux densities, in {T.FLUX_UNIT_LABEL} of luminal surface.")
 
 # ============================================================
 #  Reading guide

@@ -66,6 +66,28 @@ Requires `streamlit>=1.52`. The dataset (`veri/nephron_veritabani.parquet`) is u
 - Segment lists are in physiological order (PT → IMCD) instead of alphabetical.
 - The anatomy diagram uses `st.iframe` (the previous component API is scheduled for removal).
 
+### Structure
+
+- **A masthead instead of a sidebar menu.** Every page starts with the same line: the name
+  (a link to the Home page) and the worlds, *Model world*, *Clinical world*, *Data & quality*,
+  and *About*; under it, the pages of the world the reader is in. It stays in view while the
+  page scrolls, its links carry the selection and are answered in place.
+- **The side panel holds the selection and nothing else:** the scenario, and the solute,
+  segment, nephron and compartment that travel across pages. Dataset facts, units and the
+  citation moved to the new **About** page (how to cite, with BibTeX; what the site is not;
+  the dataset and its fingerprint; units; licence; where to report an error).
+- **Numbered figures.** A chart is named under it, not inside it: `ui_kit.figure()` gives
+  every chart "Fig. N", a caption in words, and its source, and puts the legend under the
+  plot where it cannot be cut off. The per-chart citation line is gone.
+- **Home.** The headline says what the site is (the name is in the masthead); the segment
+  selected on Fig. 1 is read out in a band across the page (profile, values, ways on).
+- **Fonts are the ones Streamlit ships** (Source Serif, Source Code Pro). Before, they were
+  requested from Google Fonts through a font string whose fallbacks were not honoured: when
+  the request failed, the whole site fell back to a sans-serif.
+- Smaller things: "Points" on Segment Profile is now the range along the segment; table
+  headers are words, not column names; Anatomy's buttons no longer lie over its legend;
+  a fold has one ruled line, not two; the section mark above page titles is gone.
+
 ### Design
 
 - **A look of its own.** The default dashboard theme is replaced by the look of a printed

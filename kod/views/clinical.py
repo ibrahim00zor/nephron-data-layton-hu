@@ -17,7 +17,7 @@ import plotly.express as px
 import nav
 import style
 from clinical_cases import CASES, REFERENCE_COLOR
-from ui_kit import q, DB, cite_footer, references_box
+from ui_kit import q, DB, figure, references_box
 
 # ================================================================
 # HEADING
@@ -165,26 +165,23 @@ if case_key == "SGLT2":
 
     with t_model:
         st.markdown("#### 1. Glucose excretion in the proximal tubule")
-        st.plotly_chart(
+        figure(
             plot_case_metric(df_glu, "position", "value", "condition",
                              "PT Lumen Glucose Concentration (mM)",
                              "Glucose (mM)", colors),
-            width='stretch',
         )
         st.markdown("#### 2. Sodium reaching the macula densa (cTAL outlet)")
         st.caption("Macula densa = the cortical end of the thick ascending limb (cTAL outlet).")
         g1, g2 = st.columns(2)
         with g1:
-            st.plotly_chart(
+            figure(
                 plot_case_metric(df_na_con, "position", "value", "condition",
                                  "cTAL Lumen Na+ Concentration", "Na+ (mM)", colors),
-                width='stretch',
             )
         with g2:
-            st.plotly_chart(
+            figure(
                 plot_case_metric(df_na_flow, "position", "value", "condition",
                                  "cTAL Lumen Na+ Flux", "Na+ flux (pmol/min)", colors),
-                width='stretch',
             )
         st.success(
             f"**Model data:** load reaching the macula densa = {_percent(flw_s, flw_n):+.0f}% "
@@ -233,22 +230,20 @@ elif case_key == "Hyperfiltration":
 
     with t_model:
         st.markdown("#### 1. Increased volume load entering the proximal tubule")
-        st.plotly_chart(
+        figure(
             plot_case_metric(df_flow_pt, "position", "value", "condition",
                              "PT Water Volume Flow (nl/min)",
                              "Volume (nl/min)", colors),
-            width='stretch',
         )
         st.caption(f"PT inlet water flow in diabetes: {qg_n:.0f} -> {qg_d:.0f} nl/min "
                    f"({_percent(qg_d, qg_n):+.0f}%).")
         st.markdown("#### 2. Sodium reabsorption (mass)")
         st.caption("In the PT the Na+ concentration is nearly constant at ~140 mM (iso-osmotic); "
                    "reabsorption shows in the **flux (mass)**.")
-        st.plotly_chart(
+        figure(
             plot_case_metric(df_na_flow_pt, "position", "value", "condition",
                              "PT Lumen Na+ Flux (load)",
                              "Na+ flux (pmol/min)", colors),
-            width='stretch',
         )
         st.warning(
             f"**Mass:** Na+ reabsorbed in the PT Normal **{reab_n:,.0f}** -> Diabetes **{reab_d:,.0f} pmol/min** "
@@ -299,16 +294,14 @@ elif case_key == "Hypertension":
         st.caption("Left: lumen concentration. Right: lumen flux (load delivered distally).")
         h1, h2 = st.columns(2)
         with h1:
-            st.plotly_chart(
+            figure(
                 plot_case_metric(df_na_con_tal, "position", "value", "condition",
                                  "mTAL Lumen Na+ Concentration (mM)", "Na+ (mM)", colors),
-                width='stretch',
             )
         with h2:
-            st.plotly_chart(
+            figure(
                 plot_case_metric(df_na_flow_tal, "position", "value", "condition",
                                  "mTAL Lumen Na+ Flux (load)", "Na+ flux (pmol/min)", colors),
-                width='stretch',
             )
         st.caption(
             f"Load at the mTAL outlet in hypertension: {fout_n:,.0f} -> {fout_h:,.0f} pmol/min "
@@ -320,4 +313,3 @@ elif case_key == "Hypertension":
         references_box(["hu2021"], title="References — Case 3", open=True)
         style.pending("Clinical references will be added with the source article.")
 
-cite_footer()

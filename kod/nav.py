@@ -3,9 +3,11 @@ nav.py — Page registry, shared selection context, and contextual navigation.
 
 Two ideas live here:
 
-1. REGISTRY (`PAGES`) — the single list of pages. app.py builds the sidebar menu from it,
-   grouped into the project's two worlds (model / clinical) plus data & quality. Adding or
-   removing a page is one entry here plus its file under views/.
+1. REGISTRY (`PAGES`) — the single list of pages, grouped into the project's two worlds
+   (model / clinical) plus data & quality. The masthead at the top of every page is drawn
+   from it (`render_masthead`): the worlds on the first line, the pages of the current
+   world on the second. Adding or removing a page is one entry here plus its file under
+   views/.
 
 2. CONTEXT — the user's current selection (scenario, solute, segment, nephron type,
    compartment, the scenarios being compared, the clinical case). It is kept in
@@ -13,6 +15,7 @@ Two ideas live here:
    pick on one page is what the next page opens with. Widgets are bound to it with
    `select()` / `multiselect()`, and `go()` jumps to another page with a chosen context.
 """
+import html
 import os
 from urllib.parse import parse_qsl, urlencode
 
@@ -25,6 +28,7 @@ MODEL = "Model world"
 CLINICAL = "Clinical world"
 QUALITY = "Data & quality"
 SECTION_ORDER = ["", MODEL, CLINICAL, QUALITY]
+WORLDS = (MODEL, CLINICAL, QUALITY)      # what the first line of the masthead offers
 
 # key -> path (relative to app.py), menu title, section. Order here is menu order.
 # The folder is deliberately NOT called "pages": Streamlit auto-discovers a pages/ folder as
@@ -36,11 +40,12 @@ PAGES = {
     "types":      {"path": "views/nephron_types.py",   "title": "Nephron Types",              "section": MODEL},
     "comparison": {"path": "views/comparison.py",      "title": "Comparison",                 "section": MODEL},
     "transporters": {"path": "views/transporters.py",  "title": "Transporters",               "section": MODEL},
-    "anatomy":    {"path": "views/anatomy.py",         "title": "Interactive Anatomy (BETA)", "section": MODEL},
+    "anatomy":    {"path": "views/anatomy.py",         "title": "Interactive Anatomy",        "section": MODEL},
     "clinical":   {"path": "views/clinical.py",        "title": "Clinical Cases",             "section": CLINICAL},
     "validation": {"path": "views/validation.py",      "title": "Validation",                 "section": QUALITY},
     "integrity":  {"path": "views/data_integrity.py",  "title": "Data Integrity",             "section": QUALITY},
     "provenance": {"path": "views/provenance.py",      "title": "Model & Provenance",         "section": QUALITY},
+    "about":      {"path": "views/about.py",           "title": "About",                      "section": ""},
 }
 
 
@@ -282,6 +287,54 @@ def neighbours(order, name="segment"):
     return before, after
 
 
+# ============================================================
+#  The masthead: where you are, and where you can go
+# ============================================================
+_FIGURES = "_nav_figures"     # how many figures the page has shown so far (see ui_kit.figure)
+
+
+def _nav_link(page, label, on=False, extra=""):
+    marked = " on" if on else ""
+    return (f"<a class='nd-go nd-nav{marked}{extra}' href='{html.escape(href(page), quote=True)}' "
+            f"target='_self'>{label}</a>")
+
+
+def render_masthead(mark):
+    """The head of every page. First line: the name (a link to the Home page) and the worlds.
+    Second line: the pages of the world the reader is in. `mark` is the logo, as SVG.
+
+    Every entry is an ordinary link that carries the selection (see `href`), answered in
+    place by events.py."""
+    here = current_page()
+    section = PAGES[here]["section"]
+    worlds = "".join(
+        _nav_link(in_section(world)[0], html.escape(world), on=(world == section))
+        for world in WORLDS if in_section(world)
+    )
+    worlds += _nav_link("about", "About", on=(here == "about"))
+    pages = ""
+    if section in WORLDS and len(in_section(section)) > 1:
+        pages = "<nav class='nd-pages'>" + "".join(
+            _nav_link(page, html.escape(title(page)), on=(page == here)) for page in in_section(section)
+        ) + "</nav>"
+    st.markdown(
+        "<div class='nd-masthead'>"
+        + _nav_link("home", f"{mark}<span>Nephron Data</span><small>Layton/Hu</small>", extra=" nd-brand")
+        + f"<nav class='nd-worlds'>{worlds}</nav></div>{pages}",
+        unsafe_allow_html=True,
+    )
+
+
+def next_figure():
+    """The number of the next figure on this page (app.py starts the count again each run)."""
+    st.session_state[_FIGURES] = st.session_state.get(_FIGURES, 0) + 1
+    return st.session_state[_FIGURES]
+
+
+def reset_figures():
+    st.session_state[_FIGURES] = 0
+
+
 def selection_summary():
     return " · ".join(str(get(name)) for name in SELECTION)
 
@@ -295,7 +348,8 @@ def render_explore_bar():
     if not others:
         return
     st.markdown("---")
-    st.caption(f"Your selection (**{selection_summary()}**) carries over to the other pages — continue in:")
+    st.caption(f"Your selection (**{selection_summary()}**) carries over to the other pages of the "
+               f"{MODEL.lower()}. Continue in:")
     row = st.container(horizontal=True, gap="medium")
     for other in others:
         link(row, other)

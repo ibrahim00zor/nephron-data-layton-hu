@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&display=swap" rel="stylesheet">
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,7 +12,7 @@
     body { font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; background: transparent; color: #1d1b18; }
     svg text { font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; }
 
-    #main-container { display: flex; flex-direction: column; width: 100%; height: 850px; overflow: hidden; }
+    #main-container { display: flex; flex-direction: column; width: 100%; height: 812px; overflow: hidden; }
     #diagram-panel {
       width: 100%; flex: 1; overflow: hidden;
       transition: flex 0.5s ease;
@@ -34,10 +34,8 @@
       padding: 4px 0; font-size: 12px; color: #6f685c; font-style: italic;
     }
 
-    #controls {
-      position: absolute; top: 8px; right: 8px; z-index: 50;
-      display: flex; gap: 6px;
-    }
+    /* the buttons sit in a row above the drawing, so they never lie over its legend */
+    #controls { display: flex; justify-content: flex-end; gap: 8px; padding: 2px 2px 8px; }
     /* a button is a frame drawn by hand; under the pointer it is shaded in (as in kod/style.py) */
     .ctrl-btn {
       position: relative; padding: 5px 12px 6px; font-family: 'Source Serif 4', Georgia, serif; font-style: italic;
@@ -59,7 +57,7 @@
     .tooltip .tt-title { font-size: 14px; font-weight: 600; color: #1d1b18; margin-bottom: 4px; }
     .tooltip .tt-row { display: flex; justify-content: space-between; gap: 12px; }
     .tooltip .tt-label { color: #6f685c; }
-    .tooltip .tt-val { font-family: 'IBM Plex Mono', Menlo, Consolas, monospace; font-size: 11.5px; color: #1d1b18; }
+    .tooltip .tt-val { font-family: 'Source Code Pro', 'IBM Plex Mono', Menlo, Consolas, monospace; font-size: 11.5px; color: #1d1b18; }
     .tooltip hr { border: none; border-top: 1px solid #d6cebc; margin: 5px 0; }
 
     .segment-path { cursor: pointer; transition: filter 0.2s, opacity 0.2s; }
@@ -67,9 +65,9 @@
 
     .zone-label { font-size: 12.5px; fill: #6f685c; font-style: italic; }
     .seg-label { font-size: 13px; fill: #1d1b18; font-weight: 600; }
-    .osm-label { font-family: 'IBM Plex Mono', Menlo, Consolas, monospace !important; font-size: 10px; fill: #6f685c; }
+    .osm-label { font-family: 'Source Code Pro', 'IBM Plex Mono', Menlo, Consolas, monospace !important; font-size: 10px; fill: #6f685c; }
     .legend-title { font-size: 11.5px; fill: #3a362f; font-style: italic; }
-    .legend-tick { font-family: 'IBM Plex Mono', Menlo, Consolas, monospace !important; font-size: 10px; fill: #6f685c; }
+    .legend-tick { font-family: 'Source Code Pro', 'IBM Plex Mono', Menlo, Consolas, monospace !important; font-size: 10px; fill: #6f685c; }
     .glom-label { font-size: 12px; fill: #8c2f1b; font-style: italic; }
     .md-label { font-size: 11px; fill: #1d1b18; font-style: italic; }
     .tgf-label { font-size: 11px; fill: #8c2f1b; font-style: italic; }
@@ -151,7 +149,7 @@
         .attr("x", 0).attr("y", 0).attr("width", W).attr("height", H)
         .attr("fill", "url(#bg-osm-grad)").attr("opacity", 0.2);
 
-      const zoneBounds = [{ y: H * 0.27 }, { y: H * 0.55 }, { y: H * 0.56 }];
+      const zoneBounds = [{ y: H * 0.27 }, { y: H * 0.555 }];
       zoneBounds.forEach(z => {
         svg.append("line")
           .attr("x1", 0).attr("y1", z.y).attr("x2", W).attr("y2", z.y)
@@ -348,7 +346,7 @@
 
     svg.append("circle").attr("cx", 350).attr("cy", 146).attr("r", 4.5)
       .attr("fill", "#faf7f0").attr("stroke", "#1d1b18").attr("stroke-width", 1.4);
-    svg.append("text").attr("class", "md-label").attr("x", 350).attr("y", 132).attr("text-anchor", "middle").text("macula densa");
+    svg.append("text").attr("class", "md-label").attr("x", 340).attr("y", 124).attr("text-anchor", "end").text("macula densa");
 
     // ============================================================
     // Flow particles (speed ∝ water flow); safe because geometry is fixed
@@ -398,7 +396,7 @@
     }
 
     // Thickness legend (always water flow)
-    const fLeg = svg.append("g").attr("transform", `translate(${W - 220}, 58)`);
+    const fLeg = svg.append("g").attr("transform", `translate(${W - 220}, 70)`);
     fLeg.append("text").attr("class", "legend-title").attr("y", -4).text("Thickness ∝ Water Flow (nl/min)");
     fLeg.append("line").attr("x1", 0).attr("y1", 10).attr("x2", 30).attr("y2", 10)
       .attr("stroke", "#9a927f").attr("stroke-width", 3).attr("stroke-linecap", "round");

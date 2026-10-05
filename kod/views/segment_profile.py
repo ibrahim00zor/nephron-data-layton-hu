@@ -4,8 +4,8 @@ import streamlit as st
 import nav
 import style
 from ui_kit import (
-    q, DB, make_chart, cite_footer, neph_for,
-    options, NEPHRONS, valid_data, segment_broken,
+    q, DB, make_chart, figure, neph_for, nephron_phrase,
+    options, NEPHRONS, SCENARIO_LABEL, valid_data, segment_broken,
 )
 from education import segment_info, cite_short
 from interpretation import interpret
@@ -62,13 +62,17 @@ else:
         m1, m2, m3 = st.columns(3)
         m1.metric(f"{solute} inlet", f"{g:.2f} mM")
         m2.metric(f"{solute} outlet", f"{c:.2f} mM", f"{(c-g)/g*100:+.1f} %" if g else None)
-        m3.metric("Points", f"{len(lumen)}")
+        low, high = lumen["value"].min(), lumen["value"].max()
+        m3.metric("Range along the segment", f"{low:.2f} – {high:.2f}")
 
     fig = make_chart(df, "position", "value", "compartment",
                      f"{segment} — {solute} ({nephron})",
                      "Intra-segment position (0 = inlet, 1 = outlet)",
                      f"{solute} (mM)", color_label="Compartment")
-    st.plotly_chart(fig, width='stretch')
+    where = "the tubular fluid and the interstitium beside it" if df["compartment"].nunique() > 1 \
+        else "the tubular fluid"
+    figure(fig, caption=f"{solute} along the {segment} of {nephron_phrase(nephron)}, in {where}; "
+                        f"{SCENARIO_LABEL.get(scenario, scenario)}")
 
     # Automatic physiological interpretation
     if len(lumen) >= 2:
@@ -87,8 +91,6 @@ else:
                 solute=solute,
             )
             style.note(note, label="Reading of this profile, mass against volume")
-
-    cite_footer()
 
     # Educational content expander
     with st.expander(f"About {segment} — info and citation"):

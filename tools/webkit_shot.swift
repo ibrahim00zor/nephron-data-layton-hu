@@ -24,8 +24,14 @@ let width = 1440.0
 let app = NSApplication.shared
 app.setActivationPolicy(.prohibited)          // no Dock icon, never takes focus
 
+let configuration = WKWebViewConfiguration()
+if #available(macOS 14.0, *) {
+    // a view nobody can see is normally slowed down or suspended; keep this one running,
+    // so that web fonts load and animations finish as they would in a visible tab
+    configuration.preferences.inactiveSchedulingPolicy = .none
+}
 let web = WKWebView(frame: NSRect(x: 0, y: 0, width: width, height: height),
-                    configuration: WKWebViewConfiguration())
+                    configuration: configuration)
 let window = NSWindow(contentRect: NSRect(x: -4000, y: -4000, width: width, height: height),
                       styleMask: [.borderless], backing: .buffered, defer: false)
 window.contentView = web

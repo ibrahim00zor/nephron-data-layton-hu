@@ -161,6 +161,18 @@ COMPARTMENT_NAME = {
 }
 
 
+def nephron_phrase(nephron):
+    """A nephron type in words, for a sentence: "the superficial nephron", "the collecting duct"."""
+    nephron = str(nephron)
+    if nephron == "sup":
+        return "the superficial nephron"
+    if nephron == "merged":
+        return "the collecting duct"
+    if nephron.startswith("jux"):
+        return f"juxtamedullary nephron {nephron[3:]}"
+    return nephron
+
+
 def segment_names():
     """Segment code -> full name (from the educational layer)."""
     from education import SEGMENT
@@ -234,13 +246,15 @@ def dataset_fingerprint():
 
 
 # ============================================================
-#  Sidebar (rendered once per run by app.py, below the page menu)
+#  The selection panel (the sidebar; rendered once per run by app.py)
+#  It holds what is selected and travels across pages: the scenario, and the solute,
+#  segment, nephron and compartment. Where to go is the masthead's business (nav.py).
 # ============================================================
 def render_sidebar():
     scenarios = scenario_list()
     with st.sidebar:
         scenario = nav.select(
-            st, "Active scenario", scenarios, "scenario", fallback="F_normal",
+            st, "Scenario", scenarios, "scenario", fallback="F_normal",
             format_func=lambda s: SCENARIO_LABEL.get(s, s),
             help="Charts and queries are filtered by this scenario. It stays selected as you change pages.",
         )
@@ -280,7 +294,7 @@ def render_sidebar():
             f"<div class='nd-where'{steps}>"
             + nephron_figure.locator(segment, links=links, names=segment_names(), long_loop=long_loop,
                                      depth=loop_depths().get(nephron, 1.0))
-            + f"<div><div class='nd-label'>Selection, kept across pages</div>"
+            + f"<div><div class='nd-label'>Kept across pages</div>"
             f"<div class='nd-side-meta' style='font-size:0.8rem;color:{style.INK_SOFT};'>"
             f"{selection_with_names()}</div>"
             f"<div class='nd-side-meta'>marked: where {html.escape(str(segment))} lies</div>"
@@ -292,35 +306,6 @@ def render_sidebar():
                 nav.reset_selection()
                 st.rerun()
 
-        st.markdown("---")
-        sb = health_metrics()
-        st.markdown(
-            f"<div class='nd-label'>The dataset</div>"
-            f"<div class='nd-side-meta'>{sb['scenario_count']} scenarios · "
-            f"{sb['rows'] // max(sb['scenario_count'], 1):,} rows each<br>"
-            f"{sb['segments']} segments · {sb['solutes']} solutes · {sb['nephrons']} nephron types<br>"
-            f"scenario code <span style='color:{style.INK_SOFT};'>{scenario}</span></div>",
-            unsafe_allow_html=True,
-        )
-
-        st.markdown("---")
-        with st.expander("Source and citation"):
-            st.markdown(
-                "**Model.** Hu R., McDonough A.A., Layton A.T. (2021). *Sex differences in solute "
-                "and water handling in the human kidney: Modeling and functional implications.* "
-                "iScience 24(6):102667. "
-                "[doi:10.1016/j.isci.2021.102667](https://doi.org/10.1016/j.isci.2021.102667)  \n"
-                "Code: `mstadt/nephron`\n\n"
-                "**This tool.** Zor, İ. (2026). *Nephron Data (Layton/Hu).* Zenodo. "
-                "[doi:10.5281/zenodo.20489610](https://doi.org/10.5281/zenodo.20489610)"
-            )
-            if "provenance" in nav.PAGES:
-                nav.link(st, "provenance", "Scenarios, inputs, how to reproduce")
-        with st.expander("Units"):
-            st.markdown(
-                "Concentration mM · solute flow pmol/min · volume nl/min · osmolality mOsm · "
-                "potential mV · transporter flux pmol/(min·cm²)"
-            )
     return scenario
 
 # ============================================================
@@ -348,6 +333,40 @@ def make_chart(df, x, y, color, title, xlab, ylab, color_label="Series",
     return fig
 
 # ============================================================
+#  A figure: the chart, and under it its number and what it shows
+# ============================================================
+SOURCE_NOTE = "Model output (Hu, McDonough &amp; Layton 2021)."
+
+
+def figure(fig, caption=None, note=None, key=None, quiet=False):
+    """Show a chart as a numbered figure.
+
+    The title a chart was built with becomes its caption (a figure is named under it, not
+    inside it); `caption` replaces it, `note` is added after it. The legend goes under the
+    plot, where it cannot be cut off. `quiet` hides the chart's toolbar (small figures).
+    """
+    built_with = fig.layout.title.text if fig.layout.title and fig.layout.title.text else ""
+    # the legend sits a fixed distance under the axis title, whatever the height of the chart
+    plot_height = max((fig.layout.height or 450) - 94, 120)
+    fig.update_layout(
+        title_text=None,
+        margin=dict(t=14, r=22),
+        legend=dict(orientation="h", title_text="", x=0, xanchor="left",
+                    y=-66 / plot_height, yanchor="top"),
+    )
+    st.plotly_chart(fig, width="stretch", key=key, config=style.QUIET_CHART if quiet else None)
+    said = (caption or built_with).rstrip()
+    if said and not said.endswith((".", "?")):
+        said += "."
+    extra = f" {note}" if note else ""
+    st.markdown(
+        f"<div class='nd-figcap'><b>Fig. {nav.next_figure()}.</b> {style.inline(said)}{extra} "
+        f"<span class='src'>{SOURCE_NOTE}</span></div>",
+        unsafe_allow_html=True,
+    )
+
+
+# ============================================================
 #  Colophon (the last thing on every page)
 # ============================================================
 def colophon():
@@ -359,7 +378,7 @@ def colophon():
         "Model: Hu R., McDonough A.A., Layton A.T. (2021). <i>Sex differences in solute and water "
         "handling in the human kidney.</i> iScience 24(6):102667.<br>"
         "Code under the MIT licence, content under CC BY 4.0. "
-        "Set in Source Serif and IBM Plex Mono; built with Streamlit, DuckDB and Plotly."
+        "Set in Source Serif and Source Code Pro; built with Streamlit, DuckDB and Plotly."
         f"{_imprint()}</div>{KEYS_CARD}",
         unsafe_allow_html=True,
     )

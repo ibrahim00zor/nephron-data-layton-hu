@@ -4,7 +4,7 @@ import plotly.express as px
 
 import nav
 import style
-from ui_kit import q, DB, cite_footer, options, CD_SEGMENTS, valid_data
+from ui_kit import q, DB, figure, options, CD_SEGMENTS, SCENARIO_LABEL, valid_data
 from education import segment_info, cite_short
 
 scenario = nav.get("scenario")
@@ -48,8 +48,8 @@ else:
                   category_orders={"nephron": ["sup","jux1","jux2","jux3","jux4","jux5"]})
     fig.update_layout(hovermode="x unified", height=480)
     fig.update_traces(line=dict(width=2), hovertemplate="%{y:.4g}")
-    st.plotly_chart(fig, width='stretch')
-    cite_footer()
+    figure(fig, caption=f"{solute} along the {segment} ({compartment.lower()}), the superficial nephron "
+                        f"against the juxtamedullary ones; {SCENARIO_LABEL.get(scenario, scenario)}")
 
     with st.expander(f"About {segment} — info and citation"):
         seg = segment_info(segment)

@@ -97,11 +97,11 @@ def test_selection_travels_between_pages():
     ok(at.switch_page(nav.path("comparison")).run())
     assert main_select(at, "Solute").value == "urea"
     assert main_select(at, "Segment").value == "mTAL"
-    assert main_select(at, "Nephron type").value == "jux3"
+    assert main_select(at, "Nephron").value == "jux3"
 
     ok(at.switch_page(nav.path("nephron")).run())
     assert main_select(at, "Solute").value == "urea"
-    assert main_select(at, "Nephron type").value == "jux3"
+    assert main_select(at, "Nephron").value == "jux3"
     assert "carries over to the other pages" in captions(at)
 
     ok(at.switch_page(nav.path("anatomy")).run())

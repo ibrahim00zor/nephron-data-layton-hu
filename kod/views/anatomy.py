@@ -10,12 +10,12 @@ from ui_kit import q, DB, options, NEPHRONS, segment_broken, PROJ, CD_SEGMENTS
 
 active_scenario = nav.get("scenario")
 
-st.markdown("## Interactive Anatomy (BETA)")
+st.markdown("## Interactive Anatomy")
 st.caption(
     "The nephron drawn, and coloured with the data. The colour of a segment is the concentration of "
     "the chosen solute (the button on the drawing switches it to solute load), its thickness is "
     "the water flowing through it, and the background is the interstitial osmolality the model is "
-    "given. Click a segment to keep its profile in the chart."
+    "given. Click a segment to keep its profile in the chart. This page is still a beta."
 )
 
 # --- Top selectors (bound to the shared selection) ---
@@ -23,7 +23,9 @@ c1, c2, c3, c4 = st.columns(4)
 segs, sol = options()
 solute = nav.select(c1, "Solute", sol, "solute", fallback="Na")
 compartment = nav.select(c2, "Compartment", ["Lumen", "Cell", "Bath"], "compartment", fallback="Lumen")
-nephron_req = nav.select(c3, "Nephron type (CD segments are 'merged')", NEPHRONS, "nephron", fallback="sup")
+nephron_req = nav.select(c3, "Nephron", NEPHRONS, "nephron", fallback="sup",
+                         help="The collecting duct (CCD, OMCD, IMCD) is shared by all nephrons and is "
+                              "always read from the merged nephron.")
 focus = nav.select(c4, "Highlighted segment", segs, "segment", fallback="PT",
                    help="The segment in your selection. It is highlighted on the diagram and is the "
                         "one the other pages open with.")

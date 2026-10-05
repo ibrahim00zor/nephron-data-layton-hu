@@ -35,8 +35,9 @@ GOOD = "#3f5e30"          # a pass mark, used sparingly
 
 GRAPHITE = "#2e2a26"      # the pencil: drawings, rules, the lines of a chart
 
-SERIF = "'Source Serif 4', Georgia, 'Times New Roman', serif"
-MONO = "'IBM Plex Mono', Menlo, Consolas, monospace"
+# The reading face and the counting face: the ones Streamlit ships (see .streamlit/config.toml).
+SERIF = "'Source Serif', 'Source Serif 4', Georgia, 'Times New Roman', serif"
+MONO = "'Source Code Pro', 'IBM Plex Mono', Menlo, Consolas, monospace"
 
 # Series colours: earthy and print-like, ordered so that neighbours differ clearly.
 SERIES = [
@@ -233,8 +234,10 @@ def _template():
 CSS = f"""
 <style>
 /* ---------- page ---------- */
-[data-testid="stMainBlockContainer"] {{ max-width: 1120px; padding-top: 3.6rem; padding-bottom: 4rem; }}
-[data-testid="stHeader"] {{ background: {PAPER}; }}
+[data-testid="stMainBlockContainer"] {{ max-width: 1120px; padding-top: 0; padding-bottom: 4rem; }}
+/* Streamlit's own bar is emptied and let through: the masthead takes its place */
+[data-testid="stHeader"] {{ background: transparent !important; pointer-events: none; }}
+[data-testid="stHeader"] button, [data-testid="stHeader"] a {{ pointer-events: auto; }}
 [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li {{ line-height: 1.62; }}
 h1 {{ letter-spacing: -0.018em; line-height: 1.08; }}
 h2 {{ letter-spacing: -0.012em; }}
@@ -306,23 +309,12 @@ hr {{ border: 0; border-top: 1px solid {RULE}; margin: 1.5rem 0 1.3rem; }}
   font-family: {MONO}; font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: {MUTED}; font-weight: 400;
 }}
 [data-testid="stSidebar"] hr {{ margin: 1rem 0 0.9rem; }}
-/* the wordmark: the mark from st.logo, and the name set beside it in the page's own serif
-   (on the Home page the logo sits in a div, elsewhere in a link back to Home) */
-[data-testid="stSidebarHeader"] > :first-child {{ display: flex; align-items: center; gap: 0.5rem; }}
-[data-testid="stSidebarHeader"] > :first-child::after {{
-  content: "Nephron Data"; font-family: {SERIF}; font-weight: 600; font-size: 1.14rem;
-  letter-spacing: -0.012em; color: {INK}; white-space: nowrap;
-}}
 [data-testid="stPageLink-NavLink"] {{ padding-left: 0; }}
 [data-testid="stPageLink-NavLink"]:hover {{ background: transparent; }}
 [data-testid="stPageLink-NavLink"] p {{ color: {ACCENT}; text-decoration: underline; text-underline-offset: 3px; }}
 [data-testid="stPageLink-NavLink"]:hover p {{ color: {INK}; }}
 
 /* ---------- building blocks ---------- */
-.nd-kicker {{
-  font-family: {MONO}; font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase;
-  color: {ACCENT}; margin: 0 0 -0.75rem;
-}}
 .nd-label {{
   font-family: {MONO}; font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: {MUTED};
 }}
@@ -463,9 +455,11 @@ body.nd-keys-on .nd-keys {{ display: block; }}
 /* ---------- paper and pencil (see the note at PAPER_TEXTURE) ---------- */
 [data-testid="stMain"] {{ background-image: {PAPER_TEXTURE}; background-attachment: local; }}
 [data-testid="stSidebarContent"] {{ background-image: {PAPER_TEXTURE}; background-attachment: local; }}
-[data-testid="stHeader"] {{ background-image: {PAPER_TEXTURE}; }}
+
 
 hr {{ border: 0; height: 6px; background: {RULE_LIGHT} center / 100% 6px no-repeat; }}
+/* the heads of the three Home panels are as tall as their tallest, so the charts line up */
+.nd-panel-head {{ min-height: 6.6rem; }}
 .nd-panel-head, .nd-subhead, figure.nd-plate, .nd-reading, .nd-colophon {{
   border-top: 0; background: {RULE_STRONG} top left / 100% 6px no-repeat; padding-top: 0.7rem;
 }}
@@ -480,14 +474,13 @@ dl.nd-issues dt {{ padding-top: 0.85rem; }}
 /* ---------- the whole page in the hand of the figure ---------- */
 /* labels are written the way the figure is annotated: small, italic, in the reading face */
 [data-testid="stWidgetLabel"] p, [data-testid="stMetricLabel"] p, [data-testid="stNavSectionHeader"] p,
-.nd-label, .nd-kicker, [data-testid^="stAlertContent"]::before, .nd-card .hint {{
+.nd-label, [data-testid^="stAlertContent"]::before, .nd-card .hint {{
   font-family: {SERIF}; font-style: italic; font-weight: 400; text-transform: none; letter-spacing: 0;
 }}
 [data-testid="stWidgetLabel"] p {{ font-size: 0.95rem; color: {INK_SOFT}; }}
 [data-testid="stMetricLabel"] p, .nd-label {{ font-size: 0.92rem; color: {MUTED}; }}
 [data-testid="stNavSectionHeader"] p {{ font-size: 0.92rem; color: {MUTED}; }}
 [data-testid^="stAlertContent"]::before {{ font-size: 0.9rem; margin-bottom: 0.05rem; }}
-.nd-kicker {{ font-size: 0.95rem; color: {ACCENT}; margin: 0 0 -0.85rem; }}
 .nd-card .hint {{ font-size: 0.8rem; }}
 dl.nd-issues dt .nd-label {{ min-width: 5.2rem; }}
 
@@ -501,9 +494,54 @@ dl.nd-issues dt .nd-label {{ min-width: 5.2rem; }}
 [data-testid="stMain"] h3 {{
   background: {UNDERLINE_SOFT} left bottom 0.45rem / 2.5rem 7px no-repeat;
 }}
-[data-testid="stSidebarHeader"] > :first-child::after {{
-  padding-bottom: 6px; background: {UNDERLINE_SOFT} left bottom / 100% 6px no-repeat;
+
+/* ---------- the masthead: the name, the worlds, the pages of this world ---------- */
+[data-testid="stElementContainer"]:has(.nd-masthead) {{
+  position: sticky; top: 0; z-index: 900; padding-bottom: 0.3rem;
+  background-color: {PAPER}; background-image: {PAPER_TEXTURE};
 }}
+.nd-masthead {{
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 0.4rem 2rem; flex-wrap: wrap;
+  padding: 0.95rem 0 0.75rem; background: {RULE_STRONG} left bottom / 100% 6px no-repeat;
+}}
+body:has([data-testid="stSidebar"][aria-expanded="false"]) .nd-masthead {{ padding-left: 2.6rem; }}
+a.nd-nav {{
+  text-decoration: none !important; background-image: none !important; color: {INK_SOFT} !important;
+  padding-bottom: 7px !important; font-size: 1rem; white-space: nowrap; transition: color 0.15s;
+}}
+a.nd-nav:hover {{ color: {ACCENT} !important; }}
+a.nd-nav.on {{
+  color: {INK} !important; font-weight: 600;
+  background: {RULE_ACCENT} left bottom / 100% 6px no-repeat !important;
+}}
+a.nd-brand {{
+  display: inline-flex; align-items: center; gap: 0.5rem; color: {INK} !important;
+  font-weight: 600; font-size: 1.22rem; letter-spacing: -0.012em; padding-bottom: 0 !important;
+}}
+a.nd-brand svg {{ width: 30px; height: 30px; flex: none; }}
+a.nd-brand span {{ padding-bottom: 6px; background: {UNDERLINE_SOFT} left bottom / 100% 6px no-repeat; }}
+a.nd-brand small {{ font-weight: 400; font-size: 0.82rem; color: {MUTED}; letter-spacing: 0; align-self: flex-end;
+  padding-bottom: 7px; }}
+.nd-worlds {{ display: flex; gap: 0.3rem 1.7rem; flex-wrap: wrap; }}
+.nd-pages {{
+  display: flex; gap: 0.2rem 1.45rem; flex-wrap: wrap; padding: 0.6rem 0 0.5rem;
+  background: {RULE_LIGHT} left bottom / 100% 6px no-repeat;
+}}
+.nd-pages a.nd-nav {{ font-size: 0.95rem; }}
+
+/* ---------- the selection panel (the sidebar) ---------- */
+[data-testid="stSidebarHeader"]::before {{
+  content: "The selection"; font-family: {SERIF}; font-style: italic; font-size: 1.02rem; color: {MUTED};
+}}
+
+/* ---------- a figure is named under it ---------- */
+.nd-figcap {{
+  font-size: 0.9rem; line-height: 1.5; color: {INK_SOFT}; margin: -0.5rem 0 0.9rem; max-width: 46rem;
+}}
+.nd-figcap b {{ font-weight: 600; color: {INK}; padding-bottom: 2px;
+  background: {UNDERLINE_SOFT} left bottom / 100% 5px no-repeat; }}
+.nd-figcap .src {{ color: {MUTED}; font-style: italic; }}
+.nd-figcap code {{ font-size: 0.8rem; }}
 
 /* a link is underlined by hand, the line following the words */
 [data-testid="stMarkdownContainer"] a:not([aria-label="Link to heading"]), .nd-byline a,
@@ -589,8 +627,7 @@ figure.nd-plate figcaption b {{
 [data-testid="stTab"][aria-selected="true"] {{ background: {RULE_ACCENT} left bottom / 100% 6px no-repeat; }}
 [data-testid="stTab"][aria-selected="true"] p {{ color: {INK}; font-weight: 600; }}
 [data-testid="stExpander"] details {{
-  border: 0; background: {RULE_LIGHT} left top / 100% 6px no-repeat, {RULE_LIGHT} left bottom / 100% 6px no-repeat;
-  padding: 3px 0;
+  border: 0; background: {RULE_LIGHT} left bottom / 100% 6px no-repeat; padding: 0 0 3px;
 }}
 [data-testid="stExpanderDetails"] {{ border-top: 0 !important; }}
 [data-testid="stAlertContainer"], .nd-note {{
@@ -654,11 +691,6 @@ def inline(text):
     out = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<i>\1</i>", out)
     out = re.sub(r"(?<![A-Za-z0-9])_([^_]+)_(?![A-Za-z0-9])", r"<i>\1</i>", out)
     return out
-
-
-def kicker(text):
-    """Small label above a page title (the section the page belongs to)."""
-    st.markdown(f"<div class='nd-kicker'>{html.escape(text)}</div>", unsafe_allow_html=True)
 
 
 def note(text, label="Note", accent=False):

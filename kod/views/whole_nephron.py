@@ -5,8 +5,8 @@ import streamlit as st
 import nav
 import style
 from ui_kit import (
-    q, DB, make_chart, cite_footer, neph_for,
-    options, SEG_ORDER_SUP, SEG_ORDER_JUX, valid_data, segment_broken,
+    q, DB, make_chart, figure, neph_for,
+    options, SEG_ORDER_SUP, SEG_ORDER_JUX, valid_data, segment_broken, nephron_phrase,
 )
 
 scenario = nav.get("scenario")
@@ -60,8 +60,9 @@ else:
     fig.update_xaxes(tickmode="array",
                      tickvals=[i + 0.5 for i in range(len(order))],
                      ticktext=order)
-    st.plotly_chart(fig, width='stretch')
-    cite_footer()
+    figure(fig, caption=f"{solute} in the {compartment.lower()} from the proximal tubule to the papilla "
+                        f"({nephron_phrase(nephron)}, then the collecting duct), the segments set end to end",
+           note="Dotted lines are segment boundaries.")
 
     with st.expander("Per-segment summary (inlet → outlet)"):
         summary = (full.sort_values(["segment", "x"])

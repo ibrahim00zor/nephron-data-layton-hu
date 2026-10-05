@@ -142,9 +142,9 @@ def _panel_chart(df, color, color_map=None, category_orders=None, right=48):
     return fig
 
 
-def _reading(scenario, segment):
-    """Under the figure: the segment in the selection, read out. A click on the figure
-    changes the selection, so this is where the figure answers."""
+def _reading(scenario, segment, values, profiles):
+    """Across the page, under the figure: the segment in the selection, read out. A click on
+    the figure changes the selection, so this is where the figure answers."""
     nephron = nav.get("nephron")
     if segment in nephron_figure.GHOST and not str(nephron).startswith("jux"):
         nephron = "jux5"                         # the thin limbs exist only in a long loop
@@ -153,38 +153,61 @@ def _reading(scenario, segment):
     shown = neph_for(segment, nephron)
     name = segment_names().get(segment, "")
     st.markdown(
-        f"<div class='nd-reading'><span class='nd-label'>Selected</span>"
-        f"<b>{segment}</b><i>{name}</i><span class='nd-side-meta'>{shown}</span></div>",
+        f"<div class='nd-reading'><span class='nd-label'>Selected on the figure</span>"
+        f"<b>{segment}</b><i>{name}</i><span class='nd-side-meta'>{shown} nephron</span></div>",
         unsafe_allow_html=True,
     )
-    if segment_broken(scenario, segment):
-        style.pending(f"{segment} did not converge in this scenario, so there is no profile to show.")
-        return
-    df = q(
-        f"""SELECT position, value, compartment AS series FROM {DB}
-            WHERE condition=? AND variable='osmolality' AND segment=? AND nephron=?
-                  AND compartment IN ('Lumen', 'Bath')
-            ORDER BY compartment, position""",
-        [scenario, segment, shown],
-    )
-    if df.empty:
-        style.pending(f"No profile for {segment} in the {shown} nephron.")
-        return
-    df["series"] = df["series"].map({"Lumen": "tubular fluid", "Bath": "interstitium"})
-    st.plotly_chart(
-        _panel_chart(df, "series", {"tubular fluid": style.ACCENT, "interstitium": style.REFERENCE_SERIES},
-                     right=84),
-        width="stretch", key="home_reading_chart", config=style.QUIET_CHART,
-    )
-    st.caption("Osmolality (mOsm) along the segment, from where the fluid enters (0) to where it "
-               "leaves (1). The interstitium is what the model is given.")
-    row = st.container(horizontal=True, gap="small")
-    if row.button("Segment Profile →", key="home_read_seg"):
-        nav.go("segment", back_label="Fig. 1 on the Home page", segment=segment, nephron=nephron)
-    if row.button("Transporters →", key="home_read_trn"):
-        nav.go("transporters", back_label="Fig. 1 on the Home page", segment=segment, nephron=nephron)
-    if row.button("Interactive drawing →", key="home_plate"):
-        nav.go("anatomy", back_label="Fig. 1 on the Home page")
+    chart, facts = st.columns([3, 2], gap="large")
+    with chart:
+        if segment_broken(scenario, segment):
+            style.pending(f"{segment} did not converge in this scenario, so there is no profile to show.")
+        else:
+            df = q(
+                f"""SELECT position, value, compartment AS series FROM {DB}
+                    WHERE condition=? AND variable='osmolality' AND segment=? AND nephron=?
+                          AND compartment IN ('Lumen', 'Bath')
+                    ORDER BY compartment, position""",
+                [scenario, segment, shown],
+            )
+            if df.empty:
+                style.pending(f"No profile for {segment} in the {shown} nephron.")
+            else:
+                df["series"] = df["series"].map({"Lumen": "tubular fluid", "Bath": "interstitium"})
+                st.plotly_chart(
+                    _panel_chart(df, "series", {"tubular fluid": style.ACCENT,
+                                                "interstitium": style.REFERENCE_SERIES}, right=92),
+                    width="stretch", key="home_reading_chart", config=style.QUIET_CHART,
+                )
+                st.markdown(
+                    f"<div class='nd-figcap'><b>Fig. {nav.next_figure()}.</b> Osmolality (mOsm) along the "
+                    f"{segment}, from where the fluid enters (0) to where it leaves (1). The interstitium "
+                    f"is what the model is given. <span class='src'>Model output "
+                    f"(Hu, McDonough &amp; Layton 2021).</span></div>",
+                    unsafe_allow_html=True,
+                )
+    with facts:
+        pair, sodium = values.get(segment), profiles.get(segment, {}).get("na")
+        rows = []
+        if pair and shown in ("sup", "merged"):
+            rows.append(("osmolality", f"{pair[0]:.0f} → {pair[1]:.0f} mOsm"))
+            if sodium:
+                rows.append(("Na⁺", f"{sodium[0]:.0f} → {sodium[1]:.0f} mM"))
+        if rows:
+            st.markdown(
+                "<div class='nd-label'>Tubular fluid, inlet → outlet</div><table class='nd-table'><tbody>"
+                + "".join(f"<tr><td class='key'>{label}</td><td class='num'>{text}</td></tr>"
+                          for label, text in rows) + "</tbody></table>",
+                unsafe_allow_html=True,
+            )
+        st.markdown("<div class='nd-label' style='margin-top:0.5rem;'>Look closer</div>",
+                    unsafe_allow_html=True)
+        row = st.container(horizontal=True, gap="small")
+        if row.button("Segment Profile →", key="home_read_seg"):
+            nav.go("segment", back_label="Fig. 1 on the Home page", segment=segment, nephron=nephron)
+        if row.button("Transporters →", key="home_read_trn"):
+            nav.go("transporters", back_label="Fig. 1 on the Home page", segment=segment, nephron=nephron)
+        if row.button("Interactive drawing →", key="home_plate"):
+            nav.go("anatomy", back_label="Fig. 1 on the Home page")
 
 
 # ============================================================
@@ -193,9 +216,9 @@ def _reading(scenario, segment):
 text, figure = st.columns(2, gap="large")
 with text:
     st.markdown(
-        "<h1>Nephron Data <span class='nd-title-sub'>(Layton/Hu)</span></h1>"
-        "<p class='nd-lede'>A mathematical model of the human nephron, laid out so it can be read: "
-        "what happens to water and to each solute, segment by segment, in six scenarios.</p>"
+        "<h1>A model of the human nephron, laid out so it can be read</h1>"
+        "<p class='nd-lede'>What happens to water and to each solute, segment by segment, "
+        "in six scenarios.</p>"
         "<div class='nd-byline'>İbrahim Zor · 2026 · "
         "<a href='https://doi.org/10.5281/zenodo.20489610' target='_blank'>doi:10.5281/zenodo.20489610</a> · "
         "<a href='https://github.com/ibrahim00zor/nefron-veri-gezgini' target='_blank'>source on GitHub</a></div>",
@@ -222,6 +245,7 @@ with text:
 
 with figure:
     values = _plate_values(scenario)
+    profiles = _plate_profiles(scenario)
     loops = _plate_loops(scenario)
     selected = nav.get("segment")
     missing = [code for code in nephron_figure.ORDER if code not in values]
@@ -232,9 +256,10 @@ with figure:
     st.markdown(
         "<figure class='nd-plate'>"
         + nephron_figure.plate(values, links=links, loops=loops, pinned=selected)
-        + nephron_figure.cards(_plate_cards(values, _plate_profiles(scenario), loops,
+        + nephron_figure.cards(_plate_cards(values, profiles, loops,
                                             _plate_notes(scenario), segment_names()))
-        + "<figcaption><b>Fig. 1.</b> The superficial nephron of the model and the collecting duct it "
+        + f"<figcaption><b>Fig. {nav.next_figure()}.</b> The superficial nephron of the model and the "
+        "collecting duct it "
         "drains into. The tint and the numbers are the osmolality of the tubular fluid (mOsm) where "
         f"it leaves each segment, in <i>{SCENARIO_LABEL.get(scenario, scenario)}</i>. Point at a part "
         "for its values; click a segment to select it. In hairline: the long loops of the five "
@@ -243,7 +268,8 @@ with figure:
         + "Schematic, not to scale; the model has no vasculature, so none is drawn.</figcaption></figure>",
         unsafe_allow_html=True,
     )
-    _reading(scenario, selected)
+
+_reading(scenario, selected, values, profiles)
 
 # ============================================================
 #  Three places to start — each opens the matching page with its selection applied
@@ -291,7 +317,7 @@ with b:
         [],
     )
     df["series"] = df["series"].map({"F_normal": "normal", "F_diab_mod": "diabetes"})
-    _panel_head("b", "What does diabetes do to glucose?", "Glucose in the PT lumen, normal and diabetes (mM)")
+    _panel_head("b", "Does diabetes change glucose?", "Glucose in the PT lumen, normal and diabetes (mM)")
     st.plotly_chart(_panel_chart(df, "series", {"normal": style.REFERENCE_SERIES,
                                                 "diabetes": style.SCENARIO_COLOR["F_diab_mod"]}),
                     width='stretch', config=style.QUIET_CHART)
@@ -319,11 +345,13 @@ with c:
 # ============================================================
 #  Finding your way
 # ============================================================
+#  Finding your way
+# ============================================================
 st.markdown("### Finding your way")
 left, right = st.columns([3, 2], gap="large")
 with left:
     st.markdown(f"""
-The menu has two worlds and a back room.
+The line at the top of every page has two worlds and a back room.
 
 **{nav.MODEL}** is the model itself. *Segment Profile* follows one solute through one segment and
 says how much of the change is mass and how much is water. *Whole Nephron* strings the segments
@@ -337,12 +365,16 @@ to be written; the model data behind each case is already there.
 **{nav.QUALITY}** is where the model is checked: *Validation* tests the output against physiology,
 *Data Integrity* lists what is in the dataset and what did not converge, and *Model & Provenance*
 gives the exact command behind every scenario.
+
+*About* says how to cite this, under which licence it is, and where to report an error.
 """)
 with right:
     style.note(
-        "Choose a scenario in the left panel, then a solute and a segment on any page. That selection "
-        "stays with you: the next page opens on it. A clinical case opens the model pages on its own "
-        "scenarios, and a scenario links back to its case.",
+        "The panel on the left holds what is selected: the scenario, and the solute, segment, "
+        "nephron and compartment you last chose on any page. It stays with you: the next page opens "
+        "on it, and the address of the page carries it, so a copied address opens the same view. "
+        "A clinical case opens the model pages on its own scenarios, and a scenario links back to "
+        "its case.",
         label="The selection travels",
     )
 

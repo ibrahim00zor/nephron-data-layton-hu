@@ -1,9 +1,10 @@
 """
 app.py — Nephron Data (Layton/Hu) · entry point.
 
-This file is the router. It runs on every page view and does the shared work once:
-builds the sidebar menu from the page registry (nav.PAGES), applies the frame (theme,
-CSS), renders the sidebar, and then runs the selected page. Page bodies live in views/.
+This file is the frame. It runs on every page view and does the shared work once: routes
+to the selected page, writes the stylesheet, answers a link that was just followed, draws
+the masthead (the worlds and their pages) and the selection panel, runs the page, and ends
+with the colophon. Page bodies live in views/.
 
 Run with:  streamlit run kod/app.py
 """
@@ -16,18 +17,13 @@ import style
 from clinical_cases import CASES
 from ui_kit import APP_NAME, NEPHRONS, apply_frame, colophon, options, render_sidebar, scenario_list
 
-# Menu: pages grouped into the two worlds (model / clinical) plus data & quality.
+# The pages. Streamlit only routes; the menu itself is the masthead (nav.render_masthead),
+# so that it can show the two worlds and stay in view while the page scrolls.
 page_objects = {
     key: st.Page(spec["path"], title=spec["title"], default=(key == "home"))
     for key, spec in nav.PAGES.items()
 }
-menu = {}
-for section in nav.SECTION_ORDER:
-    keys = nav.in_section(section)
-    if keys:
-        menu[section] = [page_objects[k] for k in keys]
-
-selected = st.navigation(menu, position="sidebar", expanded=True)
+selected = st.navigation(list(page_objects.values()), position="hidden")
 current = next((k for k, page in page_objects.items() if page is selected), "home")
 nav.set_current_page(current)
 
@@ -37,7 +33,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-st.logo(nephron_figure.mark(), size="large")
 apply_frame()
 
 # A link carries a selection (see nav.href). Opened from outside, it is read once, when the
@@ -54,10 +49,10 @@ if followed:
     target = nav.follow(followed, allowed)
     if target and target != current:
         st.switch_page(nav.path(target))
+nav.render_masthead(nephron_figure.mark())
 render_sidebar()
 nav.render_origin()
-if nav.PAGES[current]["section"]:
-    style.kicker(nav.PAGES[current]["section"])     # which of the worlds this page belongs to
+nav.reset_figures()      # "Fig. 1" is the first figure of whatever page follows
 
 selected.run()
 

@@ -105,7 +105,7 @@ transporter flux density pmol/(min·cm²) (1 model unit = 600; verified by mass 
 │   └── nephron_veritabani.parquet   # 6 scenarios, one tidy table
 ├── kod/
 │   ├── app.py             # entry point / router: menu, frame, sidebar, then the page
-│   ├── nav.py             # page registry, shared selection context, contextual jumps
+│   ├── nav.py             # page registry, masthead, shared selection, links that carry it
 │   ├── ui_kit.py          # shared: frame, sidebar, queries, chart helper, citation footer
 │   ├── style.py           # the look: palette, chart template, stylesheet
 │   ├── nephron_figure.py  # the nephron drawing: Home figure, sidebar locator, logo
@@ -114,7 +114,7 @@ transporter flux density pmol/(min·cm²) (1 model unit = 600; verified by mass 
 │   ├── transport.py       # transporter fluxes: verified units, membranes, mass balance
 │   ├── education.py       # educational content (segment/transporter/solute)
 │   ├── interpretation.py  # automatic mass/volume interpretation
-│   ├── views/             # one file per page (home, segment_profile, whole_nephron, ...)
+│   ├── views/             # one file per page (home, segment_profile, ..., about)
 │   ├── d3_components/     # nephron_diagram.html (D3.js anatomic template)
 │   ├── build_database.py  # raw txt -> tidy Parquet (multi-scenario)
 │   ├── run_scenarios.py   # scenario generator (resumable)

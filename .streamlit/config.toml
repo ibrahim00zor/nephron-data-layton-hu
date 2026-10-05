@@ -22,9 +22,14 @@ showSidebarBorder = true
 baseRadius = "2px"
 buttonRadius = "2px"
 
-font = "'Source Serif 4':https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&display=swap, Georgia, 'Times New Roman', serif"
-headingFont = "'Source Serif 4':https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&display=swap, Georgia, 'Times New Roman', serif"
-codeFont = "'IBM Plex Mono':https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap, Menlo, Consolas, monospace"
+# Typefaces: the serif and the mono that Streamlit itself ships (Source Serif, Source Code
+# Pro). Nothing is fetched from a third party, so the page reads the same in every browser,
+# offline, and behind a content blocker. (Until 2026-10 the fonts came from Google Fonts
+# through a font string whose fallbacks were not honoured: when the request failed, the
+# whole site fell back to a sans-serif.)
+font = "serif"
+headingFont = "serif"
+codeFont = "monospace"
 baseFontSize = 17
 codeFontSize = "0.84rem"
 headingFontWeights = [600, 600, 600, 600, 600, 600]
