@@ -1,16 +1,18 @@
 // Look at a page the way Safari draws it, without touching Safari.
 //
 // The app is developed against Chromium; Safari (WebKit) once drew a page with the lines of
-// every chart missing, and nobody could see it from here. This renders a URL in WebKit, off
-// screen, and saves a picture.
+// every chart missing, and nobody could see it from here. This renders a URL in WebKit and
+// saves a picture.
 //
 //   swift tools/webkit_shot.swift <url> <out.png> [height] [javascript to run before the picture]
 //   swift tools/webkit_shot.swift http://localhost:8501/segment_profile /tmp/segment.png
 //
-// The view is not visible, so CSS animations stay at their first frame: to look at the Home
-// figure, switch them off with the javascript argument, e.g.
-//   "const s = document.createElement('style'); s.textContent = '.nd-plate * { animation: none !important; }'; document.head.appendChild(s); 'ok'"
-// Web fonts may not have loaded in the picture; that is the tool, not the page.
+// The window is on the screen but fully transparent and deaf to the mouse: nothing is seen
+// and nothing is in the way, yet WebKit treats the page as one that is being looked at, so
+// animations run to their end (a page fades in when it is opened; a window kept off screen
+// would be photographed while it is still invisible).
+//
+// To point at a page, click it, or time how long it takes to paint, see webkit_drive.swift.
 import Cocoa
 import WebKit
 
@@ -32,10 +34,13 @@ if #available(macOS 14.0, *) {
 }
 let web = WKWebView(frame: NSRect(x: 0, y: 0, width: width, height: height),
                     configuration: configuration)
-let window = NSWindow(contentRect: NSRect(x: -4000, y: -4000, width: width, height: height),
+let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
                       styleMask: [.borderless], backing: .buffered, defer: false)
 window.contentView = web
-window.orderBack(nil)
+window.alphaValue = 0
+window.ignoresMouseEvents = true
+window.level = .floating
+window.orderFrontRegardless()
 web.load(URLRequest(url: url))
 
 func picture() {

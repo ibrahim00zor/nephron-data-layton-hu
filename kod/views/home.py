@@ -153,8 +153,10 @@ def _reading(scenario, segment, values, profiles):
     shown = neph_for(segment, nephron)
     name = segment_names().get(segment, "")
     st.markdown(
-        f"<div class='nd-reading'><span class='nd-label'>Selected on the figure</span>"
-        f"<b>{segment}</b><i>{name}</i><span class='nd-side-meta'>{shown} nephron</span></div>",
+        f"<div class='nd-reading {nav.changed('home_reading', (scenario, segment, shown))}'>"
+        f"<span class='nd-label'>Selected on the figure</span>"
+        f"<b>{segment}</b><i>{name}</i><span class='nd-side-meta'>{shown} nephron</span></div>"
+        + nephron_figure.pin(segment),
         unsafe_allow_html=True,
     )
     chart, facts = st.columns([3, 2], gap="large")
@@ -248,6 +250,9 @@ with figure:
     profiles = _plate_profiles(scenario)
     loops = _plate_loops(scenario)
     selected = nav.get("segment")
+    # the figure is drawn in, stroke by stroke, the first time it is shown in a session
+    first_time = not st.session_state.get("_home_plate_shown")
+    st.session_state["_home_plate_shown"] = True
     missing = [code for code in nephron_figure.ORDER if code not in values]
     # a click on a segment selects it here (the reading below follows, and so does every other
     # page); a click on the long loops opens the comparison of the nephron types
@@ -255,7 +260,7 @@ with figure:
     links["loops"] = nav.href("types", segment="LDL")
     st.markdown(
         "<figure class='nd-plate'>"
-        + nephron_figure.plate(values, links=links, loops=loops, pinned=selected)
+        + nephron_figure.plate(values, links=links, loops=loops, animate=first_time)
         + nephron_figure.cards(_plate_cards(values, profiles, loops,
                                             _plate_notes(scenario), segment_names()))
         + f"<figcaption><b>Fig. {nav.next_figure()}.</b> The superficial nephron of the model and the "

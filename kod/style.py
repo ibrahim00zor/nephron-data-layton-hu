@@ -92,20 +92,15 @@ def _svg_url(svg):
     return 'url("data:image/svg+xml,' + quote(svg, safe="/:=,;'() ") + '")'
 
 
-# the tooth of the paper: a fine grain, and a much slower unevenness of tone under it
-_GRAIN = _svg_url(
-    "<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'>"
-    "<filter id='g' x='0' y='0' width='100%' height='100%'>"
-    "<feTurbulence type='fractalNoise' baseFrequency='0.72 0.86' numOctaves='3' seed='8' stitchTiles='stitch'/>"
-    "<feColorMatrix type='matrix' values='0 0 0 0 0.30  0 0 0 0 0.25  0 0 0 0 0.17  0 0 0 0.14 -0.015'/>"
-    "</filter><rect width='260' height='260' filter='url(#g)'/></svg>")
-_MOTTLE = _svg_url(
-    "<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900'>"
-    "<filter id='m' x='0' y='0' width='100%' height='100%'>"
-    "<feTurbulence type='fractalNoise' baseFrequency='0.006' numOctaves='2' seed='21' stitchTiles='stitch'/>"
-    "<feColorMatrix type='matrix' values='0 0 0 0 0.45  0 0 0 0 0.36  0 0 0 0 0.22  0 0 0 0.10 -0.03'/>"
-    "</filter><rect width='900' height='900' filter='url(#m)'/></svg>")
-PAPER_TEXTURE = f"{_GRAIN}, {_MOTTLE}"
+# The tooth of the paper: a fine grain, and a much slower unevenness of tone under it. Both
+# are small pictures made once in the browser (events.py) and handed to the stylesheet as
+# --nd-grain and --nd-mottle. They used to be drawings that the browser worked out from noise
+# every time it painted the page behind anything; in Safari that was most of the cost of a
+# frame (about 40 of 70 ms for a screenful). Until the pictures are there, the page has the
+# same tone without the grain, so nothing shifts when they arrive.
+PAPER_TEXTURE = ("var(--nd-grain, linear-gradient(rgba(149, 137, 115, 0.047), rgba(149, 137, 115, 0.047))), "
+                 "var(--nd-mottle, linear-gradient(rgba(179, 162, 129, 0.02), rgba(179, 162, 129, 0.02)))")
+PAPER_TEXTURE_SIZE = "260px 260px, 900px 900px"      # one tile of each
 
 
 def _tooth(width, height):
@@ -453,8 +448,9 @@ body.nd-keys-on .nd-keys {{ display: block; }}
 .nd-side-about {{ font-size: 0.9rem; color: {INK_SOFT}; font-style: italic; line-height: 1.45; margin: -0.3rem 0 0.2rem; }}
 
 /* ---------- paper and pencil (see the note at PAPER_TEXTURE) ---------- */
-[data-testid="stMain"] {{ background-image: {PAPER_TEXTURE}; background-attachment: local; }}
-[data-testid="stSidebarContent"] {{ background-image: {PAPER_TEXTURE}; background-attachment: local; }}
+[data-testid="stMain"], [data-testid="stSidebarContent"] {{
+  background-image: {PAPER_TEXTURE}; background-size: {PAPER_TEXTURE_SIZE}; background-attachment: local;
+}}
 
 
 hr {{ border: 0; height: 6px; background: {RULE_LIGHT} center / 100% 6px no-repeat; }}
@@ -498,7 +494,7 @@ dl.nd-issues dt .nd-label {{ min-width: 5.2rem; }}
 /* ---------- the masthead: the name, the worlds, the pages of this world ---------- */
 [data-testid="stElementContainer"]:has(.nd-masthead) {{
   position: sticky; top: 0; z-index: 900; padding-bottom: 0.3rem;
-  background-color: {PAPER}; background-image: {PAPER_TEXTURE};
+  background-color: {PAPER}; background-image: {PAPER_TEXTURE}; background-size: {PAPER_TEXTURE_SIZE};
 }}
 .nd-masthead {{
   display: flex; align-items: flex-end; justify-content: space-between; gap: 0.4rem 2rem; flex-wrap: wrap;
@@ -641,7 +637,7 @@ figure.nd-plate figcaption b {{
 [data-testid="stSidebar"] {{ border-right-color: transparent !important; }}
 [data-testid="stSidebarContent"] {{
   background-image: {UPRIGHT_LIGHT}, {PAPER_TEXTURE};
-  background-position: right top, 0 0, 0 0; background-size: 6px 100%, auto, auto;
+  background-position: right top, 0 0, 0 0; background-size: 6px 100%, {PAPER_TEXTURE_SIZE};
   background-repeat: no-repeat, repeat, repeat; background-attachment: local;
 }}
 [data-testid="stSidebarNavLink"][aria-current="page"] {{

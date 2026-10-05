@@ -105,7 +105,7 @@ def test_selection_travels_between_pages():
     assert "carries over to the other pages" in captions(at)
 
     ok(at.switch_page(nav.path("anatomy")).run())
-    assert main_select(at, "Highlighted segment").value == "mTAL"
+    assert main_select(at, "Selected segment").value == "mTAL"
 
 
 def test_restricted_page_does_not_overwrite_selection():
@@ -181,7 +181,7 @@ def test_clinical_case_round_trip_into_model_world():
     at = jump(at, "_nav_back")
     at = jump(at, "case_SGLT2_ana")
     assert page(at) == "anatomy"
-    assert main_select(at, "Highlighted segment").value == "cTAL"
+    assert main_select(at, "Selected segment").value == "cTAL"
 
 
 def test_clinical_model_numbers_unchanged():

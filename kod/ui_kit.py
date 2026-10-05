@@ -59,7 +59,7 @@ SCENARIO_DETAIL = {
 def apply_frame():
     """Chart template and stylesheets shared by every page (see style.py, nephron_figure.py)."""
     style.apply()
-    st.markdown(nephron_figure.STYLES, unsafe_allow_html=True)
+    st.markdown(nephron_figure.STYLES + nav.TURNING, unsafe_allow_html=True)
 
 # ============================================================
 #  Query helpers (cached)
@@ -354,13 +354,18 @@ def figure(fig, caption=None, note=None, key=None, quiet=False):
         legend=dict(orientation="h", title_text="", x=0, xanchor="left",
                     y=-66 / plot_height, yanchor="top"),
     )
-    st.plotly_chart(fig, width="stretch", key=key, config=style.QUIET_CHART if quiet else None)
+    # A figure keeps its place: the second figure of a page is the same chart whatever it
+    # shows, so a new selection redraws its lines instead of taking the chart away and
+    # putting another one there.
+    number = nav.next_figure()
+    st.plotly_chart(fig, width="stretch", key=key or f"nd_fig_{nav.current_page()}_{number}",
+                    config=style.QUIET_CHART if quiet else None)
     said = (caption or built_with).rstrip()
     if said and not said.endswith((".", "?")):
         said += "."
     extra = f" {note}" if note else ""
     st.markdown(
-        f"<div class='nd-figcap'><b>Fig. {nav.next_figure()}.</b> {style.inline(said)}{extra} "
+        f"<div class='nd-figcap'><b>Fig. {number}.</b> {style.inline(said)}{extra} "
         f"<span class='src'>{SOURCE_NOTE}</span></div>",
         unsafe_allow_html=True,
     )

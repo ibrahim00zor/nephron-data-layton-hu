@@ -79,16 +79,61 @@ def test_plate_links_loops_and_selection():
              for i, name in enumerate(figure.LOOPS)]
     links = {code: f"./?segment={code}&scenario=F_HT" for code in figure.ORDER}
     links["loops"] = "nephron_types?segment=LDL&scenario=F_HT"
-    svg = figure.plate(VALUES, links=links, loops=loops, pinned="mTAL")
+    svg = figure.plate(VALUES, links=links, loops=loops)
     _parse(svg)                                   # '&' in links must be escaped
     assert svg.count("class='nd-go'") == len(figure.ORDER) + 1     # every segment, and the loops
     assert svg.count("target='_self'") == len(figure.ORDER) + 1
-    assert svg.count("nd-pinned") == 2            # the wall and the label of the selected segment
     assert "data-seg='loops'" in svg and "data-seg='glom'" in svg and "data-seg='md'" in svg
     assert svg.count("data-part='loops'") == 2 * len(loops)        # two limbs per loop
     # small targets are drawn after (on top of) the wide ones, or they could not be reached
     assert svg.index("data-seg='md'") > svg.index("data-seg='DCT'")
     assert svg.index("data-seg='glom'") > svg.index("data-seg='PT'")
+
+
+def test_the_selection_is_marked_beside_the_plate_not_in_it():
+    # the figure of a scenario is the same text whatever is selected: selecting a segment
+    # must not make the page send, parse and lay out the whole drawing again
+    assert "nd-pin" not in figure.plate(VALUES)
+    rule = figure.pin("mTAL")
+    assert rule.startswith("<style class='nd-pin'>") and "[data-part='mTAL']" in rule
+    assert figure.ACCENT in rule and "[data-seg='mTAL'] .nd-code" in rule
+    assert figure.pin("not a segment") == ""
+
+
+def test_nothing_in_the_plate_is_left_for_the_browser_to_filter():
+    # a filter is worked out again for every frame in which something under it changes;
+    # in Safari that made the figure stutter under the pointer (2026-10)
+    svg = figure.plate(VALUES)
+    assert "<filter" not in svg and "filter=" not in svg
+    assert "id='nd-tooth'" in svg and "data:image/png;base64," in svg      # the tooth is a tile
+    # the drawing is not ruled: the firm pass and the looser one do not coincide
+    import hand
+    straight = figure.SEGMENTS["CCD"]["d"]
+    assert hand.FIRM.path(straight) != hand.LOOSE.path(straight) != straight
+
+
+def test_the_hand_follows_every_path_of_the_drawings():
+    import hand
+    for code, seg in figure.SEGMENTS.items():
+        points, closed = hand.along(seg["d"])
+        assert not closed and len(points) >= 3, code
+        (x0, y0), (x1, y1) = points[0], points[-1]
+        # a path starts and ends where it is said to
+        start = [float(v) for v in seg["d"][1:].split(" ")[0].split(",")]
+        assert abs(x0 - start[0]) < 1e-6 and abs(y0 - start[1]) < 1e-6, code
+    # an arc is followed along the arc, not along its chord
+    points, _ = hand.along("M0,0 A10,10 0 0 0 20,0", step=2.0)
+    assert max(y for _, y in points) > 9.5 and abs(points[-1][0] - 20) < 1e-6
+    # a hand moves a point by less than its reach, and the same point always alike
+    for x, y in ((0, 0), (218, 392), (388, 598)):
+        moved = hand.FIRM.at(x, y)
+        assert abs(moved[0] - x) <= hand.FIRM.reach and abs(moved[1] - y) <= hand.FIRM.reach
+        assert moved == hand.FIRM.at(x, y)
+    # consecutive segments meet where they met before, and without a corner
+    drawn = hand.FIRM.chain([seg["d"] for seg in figure.SEGMENTS.values()])
+    for before, after in zip(drawn, drawn[1:]):
+        assert before.split(" ")[-1] == after.split(" ")[0][1:]
+    _parse(f"<svg xmlns='http://www.w3.org/2000/svg'><defs>{hand.tooth('#faf7f0')}</defs></svg>")
 
 
 def test_cards_say_what_they_are_given():
@@ -119,8 +164,11 @@ def test_locator_links_and_struck_segments():
 
 def test_hover_styles_cover_everything_that_can_be_pointed_at():
     assert set(figure.HOT) == set(figure.SEGMENTS) | {"loops", "glom", "md"}
-    for key in figure.HOT:
-        assert f"[data-seg='{key}']:hover" in figure.STYLES, key
+    for key in list(figure.HOT) + list(figure.GHOST):
+        assert f"svg[data-hot='{key}'] [data-part='{key}']" in figure.STYLES, key
+    for key in list(figure.SEGMENTS) + list(figure.GHOST):      # a click is marked at once
+        assert f"svg[data-pick='{key}']" in figure.STYLES, key
+    assert ":has(" not in figure.STYLES           # what is under the pointer is named by events.py
 
 
 def test_mark_is_well_formed():

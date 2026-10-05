@@ -44,18 +44,22 @@ allowed = {
     "compartment": ["Lumen", "Cell", "Bath"],
 }
 nav.read_url(allowed)
-followed = events.went()
+followed = events.went(current)
 if followed:
     target = nav.follow(followed, allowed)
     if target and target != current:
         st.switch_page(nav.path(target))
 nav.render_masthead(nephron_figure.mark())
 render_sidebar()
-nav.render_origin()
-nav.reset_figures()      # "Fig. 1" is the first figure of whatever page follows
 
-selected.run()
+# Everything under the masthead is one block, named after the page, so that a page can be
+# turned as a whole (see "Turning the page" in nav.py).
+with st.container(key=nav.body_key(current)):
+    nav.render_origin()
+    nav.reset_figures()      # "Fig. 1" is the first figure of whatever page follows
 
-nav.render_explore_bar()
-colophon()
+    selected.run()
+
+    nav.render_explore_bar()
+    colophon()
 nav.write_url()     # the address now says what this page shows

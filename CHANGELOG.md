@@ -7,6 +7,44 @@ Notable changes to this project. Newest first.
 Tested with Python 3.12, Streamlit 1.65, DuckDB 1.5, pandas 3.0, Plotly 7.1.
 Requires `streamlit>=1.52`. The dataset (`veri/nephron_veritabani.parquet`) is unchanged.
 
+### Fluency (2026-10-05)
+
+Measured in Safari's engine (WebKit) with `tools/webkit_drive.swift`, on the machine the site
+is developed on; frame times are medians.
+
+- **The name in the masthead leads home.** It did not: the address of the Home page was sent
+  to the app as an empty string, which the app took for "nothing was followed".
+- **Nothing is filtered by the browser any more.** The wander of the pencil line and the tooth
+  of the paper were SVG filters laid over the drawings, and the grain of the page was two
+  filtered drawings used as backgrounds. A browser works a filter out again for every frame in
+  which something under it changes, and Safari also redrew the page's grain whenever it
+  painted anything on it. Now the wander is in the geometry (`kod/hand.py`: a point is moved by
+  a smooth field that depends only on where it is), the tooth is a small tile, and the grain of
+  the page is two small pictures made once in the browser. The look is the same; a full
+  repaint of the Home page went from 80 ms to 41 ms.
+- **Fig. 1 answers at the rate of the display.** Pointing from segment to segment: 85 ms per
+  frame before, 17 ms now. What is under the pointer is named on the figure by the script
+  (`data-hot`) instead of through `:has(:hover)`; the card beside the pointer is moved, not
+  laid out again. A clicked segment is marked at once, before the app has answered; the
+  selection is marked by a rule beside the figure, so the figure itself is not sent again.
+- **Interactive Anatomy is drawn by the page itself** (`kod/anatomy_figure.py`), by the same
+  hand and answered by the same script as Fig. 1. It was a D3 drawing in a frame, with two
+  fonts and a library fetched from elsewhere: about 30 ms per frame with the flow running (up
+  to 90 ms under the pointer), a reload of the frame for every change, and — in Safari — a
+  drawing cut off below the outer medulla. Now: 17 ms per frame, a change of solute or of what
+  the colour shows is eased in place, the whole nephron is in view, and nothing is fetched
+  from a third party. The profile along the nephron stands beside the drawing; a click on a
+  segment selects it for every page. The page reads its data in two queries instead of
+  about forty. The loop of the superficial nephron is closed (it was drawn as two limbs that
+  did not meet).
+- **Pages are turned, not swapped.** The page that is left steps back on the click; the page
+  that is opened fades in as it arrives (it used to appear in three or four pieces). On a
+  page, a block whose content changes settles in softly. `prefers-reduced-motion` is honoured.
+- **A chart keeps its place.** A numbered figure is the same chart whatever it shows, so a
+  new selection redraws its lines instead of removing the chart and putting another there.
+- Tools: `tools/webkit_drive.swift` points at a page, clicks it and times its frames in
+  WebKit; `tools/webkit_shot.swift` now photographs a page that is running.
+
 ### Corrected
 
 - **Primary citation.** The model paper was cited with iScience article number 102694 and
@@ -64,7 +102,6 @@ Requires `streamlit>=1.52`. The dataset (`veri/nephron_veritabani.parquet`) is u
 - The Clinical page follows the content-free version on `main`: structure and model data
   only, until a verified source article is loaded. No clinical content is reintroduced.
 - Segment lists are in physiological order (PT → IMCD) instead of alphabetical.
-- The anatomy diagram uses `st.iframe` (the previous component API is scheduled for removal).
 
 ### Structure
 

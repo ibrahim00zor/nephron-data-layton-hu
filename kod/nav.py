@@ -57,6 +57,11 @@ def title(page):
     return PAGES[page]["title"]
 
 
+def slug(page):
+    """A page as one word that can be part of a class name: the name of its file."""
+    return os.path.splitext(os.path.basename(PAGES[page]["path"]))[0]
+
+
 def in_section(section, exclude=None):
     return [k for k, spec in PAGES.items() if spec["section"] == section and k != exclude]
 
@@ -210,7 +215,7 @@ def url_path(page):
     """Address of a page: the name of its file; the Home page is the root."""
     if page == "home":
         return "./"
-    return os.path.splitext(os.path.basename(PAGES[page]["path"]))[0]
+    return slug(page)
 
 
 def query(**changes):
@@ -323,6 +328,55 @@ def render_masthead(mark):
         + f"<nav class='nd-worlds'>{worlds}</nav></div>{pages}",
         unsafe_allow_html=True,
     )
+
+
+# ============================================================
+#  Turning the page
+# ============================================================
+# A page is drawn inside one block (app.py), named after it. The block of a page that has
+# just been opened fades in; the block of a page that is being left steps back at once, on
+# the click (events.py names it on <body>), so that there is no moment at which the old page
+# is cut off and the new one is not there yet. Each page has a fade of its own name: a block
+# that changes its name starts its fade again, a block that stays where it is does not, so
+# changing a selection on a page moves nothing.
+def body_key(page):
+    return f"nd_page_{slug(page)}"
+
+
+def _turning():
+    rules = []
+    for page in PAGES:
+        name = slug(page)
+        leaving = "home" if page == "home" else name       # what events.py calls the page
+        rules.append(
+            f"@keyframes nd-arrive-{name} {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}\n"
+            f".st-key-{body_key(page)} {{ animation: nd-arrive-{name} .34s ease-out; }}\n"
+            f"body[data-leaving='{leaving}'] .st-key-{body_key(page)} "
+            f"{{ opacity: 0; transition: opacity .14s ease-in; animation: none; }}")
+    rules.append("@keyframes nd-settle-a { from { opacity: 0.25; } to { opacity: 1; } }\n"
+                 "@keyframes nd-settle-b { from { opacity: 0.25; } to { opacity: 1; } }\n"
+                 ".nd-settle-a { animation: nd-settle-a .26s ease-out; }\n"
+                 ".nd-settle-b { animation: nd-settle-b .26s ease-out; }")
+    rules.append("@media (prefers-reduced-motion: reduce) { [class*='st-key-nd_page_'], "
+                 ".nd-settle-a, .nd-settle-b { animation: none !important; transition: none !important; } }")
+    return "<style>" + "\n".join(rules) + "</style>"
+
+
+TURNING = _turning()
+
+
+def changed(name, value):
+    """A class for a block that shows `value`: "nd-settle-a" or "nd-settle-b", the other one
+    each time the value is not what it was. The two fade in alike, so what a block says
+    settles in softly when it changes, and stays still when it does not."""
+    seen = st.session_state.setdefault("_nav_settle", {})
+    last, side = seen.get(name, (None, "b"))
+    if last is None:
+        side = "a"
+    elif value != last:
+        side = "b" if side == "a" else "a"
+    seen[name] = (value, side)
+    return f"nd-settle-{side}"
 
 
 def next_figure():

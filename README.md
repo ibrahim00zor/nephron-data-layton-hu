@@ -31,7 +31,7 @@ automatically, and provides an educational clinical layer.
 | Model | Nephron Types | Superficial vs juxtamedullary (jux1–5): the effect of depth |
 | Model | Comparison | Several scenarios overlaid, with a difference table |
 | Model | Transporters | Membrane fluxes per pathway and per transporter (NHE3, SGLT2, NKCC2, NCC, ENaC, Na/K-ATPase, …), with a mass-balance check |
-| Model | Interactive Anatomy (BETA) | D3.js anatomic diagram: color by concentration/load, thickness by flow |
+| Model | Interactive Anatomy (BETA) | The nephron drawn and coloured with the data: colour by concentration or load, thickness by water flow; a click on a segment selects it |
 | Clinical | Clinical Cases | Educational case interface built on the same scenarios — *not medical advice* |
 | Data & quality | Validation | Automatic physiology checks |
 | Data & quality | Data Integrity | Database inventory, convergence status, known limits |
@@ -49,7 +49,7 @@ a scenario links to the clinical case built on it.
 | Comparison | Several scenarios overlaid, with a difference table |
 | Validation | Automatic physiology checks against textbook expectations |
 | Data Integrity | Database inventory, convergence status, known limits |
-| Interactive Anatomy (BETA) | D3.js anatomic diagram: color by concentration/load, thickness by flow |
+| Interactive Anatomy (BETA) | The nephron drawn and coloured with the data: colour by concentration or load, thickness by water flow |
 | Clinical | Educational case interface (mechanism, drug/dose, model data) — *not medical advice* |
 
 ---
@@ -108,19 +108,22 @@ transporter flux density pmol/(min·cm²) (1 model unit = 600; verified by mass 
 │   ├── nav.py             # page registry, masthead, shared selection, links that carry it
 │   ├── ui_kit.py          # shared: frame, sidebar, queries, chart helper, citation footer
 │   ├── style.py           # the look: palette, chart template, stylesheet
+│   ├── hand.py            # the hand that draws: the wander of a line and the tooth of the paper, as geometry
 │   ├── nephron_figure.py  # the nephron drawing: Home figure, sidebar locator, logo
-│   ├── events.py          # clicks, pointer cards and keys, answered in place (v2 component)
+│   ├── anatomy_figure.py  # the drawing of the Interactive Anatomy page, coloured and sized by the data
+│   ├── events.py          # clicks, pointer cards, keys and page turns, answered in place (v2 component)
 │   ├── clinical_cases.py  # which scenario/focus each clinical case is built on
 │   ├── transport.py       # transporter fluxes: verified units, membranes, mass balance
 │   ├── education.py       # educational content (segment/transporter/solute)
 │   ├── interpretation.py  # automatic mass/volume interpretation
 │   ├── views/             # one file per page (home, segment_profile, ..., about)
-│   ├── d3_components/     # nephron_diagram.html (D3.js anatomic template)
 │   ├── build_database.py  # raw txt -> tidy Parquet (multi-scenario)
 │   ├── run_scenarios.py   # scenario generator (resumable)
 │   └── veri_kontrol.py    # data-integrity checker (convergence)
-└── tests/
-    └── test_app.py        # smoke + navigation tests (Streamlit AppTest)
+├── tests/                 # Streamlit AppTest and unit tests; all of them: python tests/run_all.py
+└── tools/
+    ├── webkit_shot.swift  # a picture of a page as Safari's engine draws it
+    └── webkit_drive.swift # point, click and time frames in Safari's engine
 ```
 
 ---

@@ -3,7 +3,7 @@
 # The rest of the styling — rules instead of boxes, small-caps labels, the ledger and
 # bibliography layouts — is in kod/style.py.
 #
-# The app is always light: the palette, the charts and the D3 diagram are drawn for a
+# The app is always light: the palette, the charts and the drawings are made for a
 # paper background. This overrides a visitor's dark-mode preference.
 
 [theme]

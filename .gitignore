@@ -35,6 +35,3 @@ BASLA_BURADAN.md
 
 # Local tooling (Claude Code launch config, etc.)
 .claude/
-
-# D3 preview render (temporary, data injected; out of repo)
-kod/d3_components/_onizleme_render.html
